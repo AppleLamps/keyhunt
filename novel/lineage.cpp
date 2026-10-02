@@ -21,7 +21,7 @@
  * randrange(2^(n-1), 2^n). Each with 0 or 1 unused outputs between puzzles.
  *
  * A match on the first 32 puzzles is reported with the seed; it is then checked
- * against every known key. Usage: lineage [threads]; lineage selftest [threads]
+ * against every known key. Usage: lineage [threads [from [to]]] (family index range, 0..14); lineage selftest [threads]
  * plants keys from known seeds and derivations and must recover them all.
  */
 #include <stdio.h>
@@ -297,30 +297,40 @@ static int selftest(int threads) {
   return failed ? 1 : 0;
 }
 
+static int g_from = 0, g_to = 1 << 30, g_idx = 0;
+template <class G> static void run(const char *name, uint64_t lo, uint64_t hi, int threads, bool by_array = false) {
+  int i = g_idx++;
+  if (i < g_from || i >= g_to) return;
+  printf("[+] family %d: %s\n", i, name); fflush(stdout);
+  search<G>(name, lo, hi, threads, by_array);
+}
+
 int main(int argc, char **argv) {
   if (argc > 1 && strcmp(argv[1], "selftest") == 0) return selftest(argc > 2 ? atoi(argv[2]) : 4);
   int threads = argc > 1 ? atoi(argv[1]) : 4;
+  if (argc > 2) g_from = atoi(argv[2]);            // optional family index range [from, to)
+  if (argc > 3) g_to = atoi(argv[3]);
   for (int i = 0; i < KNOWN_KEYS_N && KNOWN_KEYS[i].bits <= NTEST; i++)
     target[KNOWN_KEYS[i].bits] = strtoull(KNOWN_KEYS[i].hex, NULL, 16);
   printf("[+] generator lineage test over puzzles 1..%d, %d threads\n", NTEST, threads);
   const uint64_t T0 = 1356998400ULL, T1 = 1483228800ULL;   // 2013-01-01 .. 2017-01-01
-  search<JavaRandom>("java.util.Random(int)", 0, 1ULL << 32, threads);
-  search<MsvcRand>("MSVC rand()", 0, 1ULL << 32, threads);
-  search<BsdRand>("BSD rand() TYPE_0", 0, 1ULL << 32, threads);
-  search<Minstd>("minstd_rand", 0, 1ULL << 31, threads);
-  search<Xorshift32>("xorshift32", 0, 1ULL << 32, threads);
-  search<Xorshift64s>("xorshift64* (32 bit seeds)", 0, 1ULL << 32, threads);
-  search<Splitmix64>("splitmix64 (32 bit seeds)", 0, 1ULL << 32, threads);
-  search<Pcg32>("pcg32 (32 bit seeds)", 0, 1ULL << 32, threads);
-  search<GlibcRandom>("glibc random()", 0, 1ULL << 32, threads);
-  search<MT19937>("MT19937 init_genrand (small seeds)", 0, 1ULL << 26, threads);
-  search<MT19937>("MT19937 init_genrand (time window)", T0, T1, threads);
-  search<MT19937>("MT19937 init_by_array = python/numpy seed(int) (small seeds)", 0, 1ULL << 26, threads, true);
-  search<MT19937>("MT19937 init_by_array = python/numpy seed(int) (time window)", T0, T1, threads, true);
-  search<MT19937_64>("MT19937-64 (small seeds)", 0, 1ULL << 26, threads);
-  search<MT19937_64>("MT19937-64 (time window)", T0, T1, threads);
+  run<JavaRandom>("java.util.Random(int)", 0, 1ULL << 32, threads);
+  run<MsvcRand>("MSVC rand()", 0, 1ULL << 32, threads);
+  run<BsdRand>("BSD rand() TYPE_0", 0, 1ULL << 32, threads);
+  run<Minstd>("minstd_rand", 0, 1ULL << 31, threads);
+  run<Xorshift32>("xorshift32", 0, 1ULL << 32, threads);
+  run<Xorshift64s>("xorshift64* (32 bit seeds)", 0, 1ULL << 32, threads);
+  run<Splitmix64>("splitmix64 (32 bit seeds)", 0, 1ULL << 32, threads);
+  run<Pcg32>("pcg32 (32 bit seeds)", 0, 1ULL << 32, threads);
+  run<GlibcRandom>("glibc random()", 0, 1ULL << 32, threads);
+  run<MT19937>("MT19937 init_genrand (small seeds)", 0, 1ULL << 26, threads);
+  run<MT19937>("MT19937 init_genrand (time window)", T0, T1, threads);
+  run<MT19937>("MT19937 init_by_array = python/numpy seed(int) (small seeds)", 0, 1ULL << 26, threads, true);
+  run<MT19937>("MT19937 init_by_array = python/numpy seed(int) (time window)", T0, T1, threads, true);
+  run<MT19937_64>("MT19937-64 (small seeds)", 0, 1ULL << 26, threads);
+  run<MT19937_64>("MT19937-64 (time window)", T0, T1, threads);
   // confirm any hit against every known key
   if (hits) printf("[!] %llu match(es): confirm against all %d known keys before believing it\n", (unsigned long long)hits.load(), KNOWN_KEYS_N);
-  else printf("[+] no generator in the tested families and seed spaces reproduces the puzzle keys\n");
+  else { int last = (g_to < g_idx ? g_to : g_idx) - 1; printf("[+] no generator in the tested families %d..%d reproduces the puzzle keys\n", g_from < g_idx ? g_from : last, last); }
   return 0;
 }

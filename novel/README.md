@@ -167,7 +167,9 @@ spaces: every 32 bit seed for every family except the Mersenne Twisters
 (a 624 word initialisation per seed), which get 0..2^26 plus every second
 of 2013 to 2016. A match on puzzles 1 to 32 is reported with the seed.
 `./lineage selftest` (part of `make test`) plants keys from six known
-seed and derivation combinations and must recover them all.
+seed and derivation combinations and must recover them all. The full run
+is `./lineage <threads> [from [to]]`; the optional family index range
+(0..14, in the order printed) lets a long run be split or resumed.
 
 **Result.** Pending: the run is in progress and this line is replaced by
 its outcome.
