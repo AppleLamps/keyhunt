@@ -171,10 +171,11 @@ $(BUILD)/test_int: $(BUILD)/tests/test_int.o $(TEST_HASH_OBJS)
 	@echo "  LD    $@"
 	$(Q)$(CXX) $(MAIN_CXXFLAGS) -o $@ $^ $(LDLIBS)
 
-test: keyhunt $(TEST_BINS)
+test: keyhunt kangaroo $(TEST_BINS)
 	@$(BUILD)/test_hash160
 	@$(BUILD)/test_int
 	@sh tests/run_tests.sh ./keyhunt
+	@sh tests/test_kangaroo.sh ./kangaroo
 
 clean:
 	rm -rf $(BUILD) keyhunt bsgsd kangaroo

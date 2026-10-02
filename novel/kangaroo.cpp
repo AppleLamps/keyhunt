@@ -86,7 +86,8 @@ static Point widthP;                 // W*G, to wrap a position back into [-W/2,
 static bool quiet = false;
 static int nthreads = 4, per_thread = 512;
 static std::atomic<bool> found(false);
-static std::atomic<uint64_t> total_steps(0);
+static std::atomic<uint64_t> total_steps(0);     // point additions performed by the walks
+static std::atomic<uint64_t> total_seeds(0);     // scalar multiplications (seeds and re-seeds)
 static std::atomic<uint64_t> dp_count(0);
 static std::atomic<uint64_t> fruitless(0), reseeds(0), cycles(0), solve_fail(0), stuck(0);
 static Int key_found;
@@ -214,6 +215,7 @@ static Point scalar_point(Int &r) {
 
 static void seed(Walker &w, bool tame) {
   Int r;
+  total_seeds++;
   for (;;) {
     r = rand_below(range_width, w.rng); r.Add(&range_start);
     if (gs_mode || !tame) { r.Sub(&range_start); r.Sub(&half_width); }   // [-W/2, W/2)
@@ -239,19 +241,35 @@ static void seed(Walker &w, bool tame) {
 // position back into [-W/2, W/2) with W*G, so the walker's set is sampled uniformly
 // without a scalar multiplication. The offset index comes from the point, so the
 // restart is still a function of the walk.
-static void gs_restart(Walker &w) {
+// Int's comparisons are unsigned on the limbs; distances are signed (two's complement)
+static inline bool signed_less(Int &a, Int &b) {
+  bool na = a.IsNegative(), nb = b.IsNegative();
+  if (na != nb) return na;
+  return a.IsLower(&b);   // same sign: the unsigned order is the signed order
+}
+
+// Returns the number of point additions performed (0 when the walker was re-seeded instead).
+static int gs_restart(Walker &w) {
+  int adds = 0;
   int i = (int)(w.P.x.bits64[2] % RESTARTS);
-  if (restartP[i].x.IsEqual(&w.P.x)) { seed(w, w.sign == 0); return; }   // no affine sum
-  w.P = secp->AddDirect(w.P, restartP[i]);
+  if (restartP[i].x.IsEqual(&w.P.x)) { seed(w, w.sign == 0); reseeds++; return 0; }   // no affine sum
+  w.P = secp->AddDirect(w.P, restartP[i]); adds++;
   w.dist.Add(&restartD[i]);
-  // the position of a walker is sign*k' + dist; only dist is known, wrap it
-  // (k' is in [-W/2, W/2] too, so the sum stays within one width of the set)
-  if (w.dist.IsGreaterOrEqual(&half_width)) {
-    if (widthP.x.IsEqual(&w.P.x)) { seed(w, w.sign == 0); return; }
-    w.dist.Sub(&range_width); Point nw = secp->Negation(widthP); w.P = secp->AddDirect(w.P, nw);
+  // the position of a walker is sign*k' + dist; only dist is known, wrap it into
+  // the window [-half, W - half) of exactly W values (W may be odd), moving the
+  // point by the matching multiple of W*G
+  Int lo(half_width); lo.Neg();
+  Int hi(range_width); hi.Sub(&half_width);
+  while (!signed_less(w.dist, hi) || signed_less(w.dist, lo)) {
+    bool up = signed_less(w.dist, lo);
+    Point step = up ? widthP : secp->Negation(widthP);
+    if (step.x.IsEqual(&w.P.x)) { seed(w, w.sign == 0); reseeds++; return adds; }
+    if (up) w.dist.Add(&range_width); else w.dist.Sub(&range_width);
+    w.P = secp->AddDirect(w.P, step); adds++;
   }
   reset_cycle_state(w);
   canonicalize(w);
+  return adds;
 }
 
 // Called after every step. Returns true when the walker was moved out of a cycle.
@@ -284,7 +302,7 @@ static void *worker(void *arg) {
   }
   std::vector<Int> dx(K);
   IntGroup grp(K); grp.Set(dx.data());
-  std::vector<uint8_t> idx(K);
+  std::vector<uint8_t> idx(K), bad(K);
   Int s, p, dy;
   uint64_t local = 0;
   const uint64_t stuck_limit = 64ULL << dp_bits;
@@ -293,12 +311,17 @@ static void *worker(void *arg) {
       uint8_t j = (uint8_t)(w[i].P.x.bits64[1] % JUMPS);
       idx[i] = j;
       dx[i].ModSub(&jumpP[j].x, &w[i].P.x);
+      // a zero denominator would zero every lane of the batch inversion: take it
+      // out (inverse of 1) and re-seed that walker alone afterwards
+      bad[i] = dx[i].IsZero();
+      if (bad[i]) dx[i].SetInt32(1);
     }
     grp.ModInv();
     for (int i = 0; i < K; i++) {
       Walker &k = w[i];
       Point &J = jumpP[idx[i]];
-      if (dx[i].IsZero()) { seed(k, k.sign == 0); reseeds++; continue; }
+      if (bad[i]) { seed(k, k.sign == 0); reseeds++; continue; }
+      local++;
       dy.ModSub(&J.y, &k.P.y);
       s.ModMulK1(&dy, &dx[i]);
       p.ModSquareK1(&s);
@@ -307,23 +330,22 @@ static void *worker(void *arg) {
       k.P.x.Set(&x3); k.P.y.Set(&y3);
       k.dist.Add(&jumpD[idx[i]]);
       canonicalize(k);
-      if (use_negation && cycle_check(k)) cycles++;
+      if (use_negation && cycle_check(k)) { cycles++; local++; }   // the escape is one addition
       k.since_dp++;
       if ((k.P.x.bits64[0] & dp_mask) == 0) {
         k.since_dp = 0;
         if (report_dp(k.P, k.sign, k.dist)) {
           if (found) break;
           seed(k, k.sign == 0); reseeds++;
-        } else if (gs_mode) gs_restart(k);
+        } else if (gs_mode) local += gs_restart(k);
       } else if (k.since_dp > stuck_limit) { seed(k, k.sign == 0); reseeds++; stuck++; }
       if (gs_mode && !found) {
         // a tame walker that left [-W/2, W/2) samples nothing useful: restart it
         Int mag(k.dist); if (mag.IsNegative()) mag.Neg();
-        if (k.sign == 0 && mag.IsGreater(&half_width)) gs_restart(k);
+        if (k.sign == 0 && mag.IsGreater(&half_width)) local += gs_restart(k);
       }
     }
-    local += K;
-    if ((local & 0xFFFF) == 0) { total_steps += local; local = 0; }
+    if (local >= 65536) { total_steps += local; local = 0; }
   }
   total_steps += local;
   (void)id;
@@ -355,6 +377,9 @@ int main(int argc, char **argv) {
     }
   }
   if (!pub || !range) usage();
+  if (nthreads < 1 || nthreads > 1024) { fprintf(stderr, "threads must be 1..1024\n"); return 1; }
+  if (per_thread < 2 || per_thread > 65536) { fprintf(stderr, "kangaroos per thread must be 2..65536\n"); return 1; }
+  if (dp_bits > 48) { fprintf(stderr, "dp bits must be 0..48\n"); return 1; }
   use_negation = negation_opt < 0 ? gs_mode : (negation_opt == 1);
   secp = new Secp256K1(); secp->Init();
   base_seed = have_seed ? seedv : ((uint64_t)time(NULL) * 0x9E3779B97F4A7C15ULL) ^ ((uint64_t)getpid() << 32);
@@ -368,6 +393,16 @@ int main(int argc, char **argv) {
   if (!range_start.IsLower(&range_end)) { fprintf(stderr, "empty range\n"); return 1; }
   range_width.Sub(&range_end, &range_start);
   int wbits = range_width.GetBitLength();
+  if (wbits <= 6) {
+    // a few dozen keys: check them directly, the walks need room to move
+    Int k(range_start);
+    while (k.IsLowerOrEqual(&range_end)) {
+      if (!k.IsZero()) { Point P = secp->ComputePublicKey(&k); if (P.x.IsEqual(&Q.x) && P.y.IsEqual(&Q.y)) { char *kh = k.GetBase16(); printf("[+] found privkey %s (direct check, tiny range)\n", kh); free(kh); return 0; } }
+      k.AddOne();
+    }
+    printf("[+] key not in range\n");
+    return 1;
+  }
   half_width.Set(&range_width); half_width.ShiftR(1);
   centre.Set(&range_start); centre.Add(&half_width);
   if (gs_mode) {
@@ -383,7 +418,8 @@ int main(int argc, char **argv) {
   if (per_thread < 2) per_thread = 2;
   per_thread &= ~1;
   int Ktotal = nthreads * per_thread;
-  double sqrtW = pow(2.0, wbits / 2.0);
+  double Wd = 0; for (int l = 3; l >= 0; l--) Wd = Wd * 18446744073709551616.0 + (double)range_width.bits64[l];
+  double sqrtW = sqrt(Wd);
   // mean jump = K*sqrt(W)/4 as an Int: 2^(wbits/2 - 2 + log2 K). The jump sizes are
   // pseudo random values in [mean/2, 3*mean/2) from a fixed generator: with the
   // negation map the walk adds and subtracts jumps, so sizes with small linear
@@ -415,6 +451,7 @@ int main(int argc, char **argv) {
   if (gs_mode) {
     for (int i = 0; i < RESTARTS; i++) {
       restartD[i] = random_below(range_width);
+      if (restartD[i].IsZero()) restartD[i].AddOne();        // the identity has no affine form
       restartP[i] = secp->ComputePublicKey(&restartD[i]);
     }
   }
@@ -452,6 +489,8 @@ int main(int argc, char **argv) {
          (unsigned long long)st, st / sqrtW, sec, st / sec / 1e6,
          (unsigned long long)dp_count.load(), (unsigned long long)fruitless.load(),
          (unsigned long long)cycles.load(), (unsigned long long)reseeds.load());
+  printf("[+] ops are point additions (walk steps, restarts, wraps, cycle escapes); %llu scalar multiplications for seeds are not included\n",
+         (unsigned long long)total_seeds.load());
   if (solve_fail || stuck)
     printf("[+] %llu tame/wild meetings failed verification, %llu walkers re-seeded for lack of distinguished points\n",
            (unsigned long long)solve_fail.load(), (unsigned long long)stuck.load());
