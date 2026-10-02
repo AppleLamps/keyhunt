@@ -89,7 +89,7 @@ STAMP := $(BUILD)/.config
 CONFIG := $(CC) $(CXX) $(MAIN_CFLAGS) $(MAIN_CXXFLAGS) $(LDLIBS)
 $(shell mkdir -p $(BUILD); echo '$(CONFIG)' | cmp -s - $(STAMP) || echo '$(CONFIG)' > $(STAMP))
 
-.PHONY: default all clean legacy bsgsd keyhunt kangaroo test
+.PHONY: default all clean legacy bsgsd keyhunt kangaroo lineage lcgfit test
 default: all
 all: keyhunt
 
@@ -106,6 +106,20 @@ legacy: $(BUILD)/keyhunt-legacy.bin
 
 kangaroo: $(BUILD)/kangaroo.bin
 	@cp -f $< $@
+
+lineage: $(BUILD)/lineage.bin
+	@cp -f $< $@
+
+lcgfit: $(BUILD)/lcgfit.bin
+	@cp -f $< $@
+
+$(BUILD)/lcgfit.bin: $(BUILD)/novel/lcgfit.o
+	@echo "  LD    lcgfit"
+	$(Q)$(CXX) $(MAIN_CXXFLAGS) -o $@ $^ $(LDLIBS)
+
+$(BUILD)/lineage.bin: $(BUILD)/novel/lineage.o
+	@echo "  LD    lineage"
+	$(Q)$(CXX) $(MAIN_CXXFLAGS) -o $@ $^ $(LDLIBS)
 
 $(BUILD)/kangaroo.bin: $(BUILD)/novel/kangaroo.o $(COMMON_OBJS)
 	@echo "  LD    kangaroo"
@@ -171,13 +185,15 @@ $(BUILD)/test_int: $(BUILD)/tests/test_int.o $(TEST_HASH_OBJS)
 	@echo "  LD    $@"
 	$(Q)$(CXX) $(MAIN_CXXFLAGS) -o $@ $^ $(LDLIBS)
 
-test: keyhunt kangaroo $(TEST_BINS)
+test: keyhunt kangaroo lcgfit lineage $(TEST_BINS)
 	@$(BUILD)/test_hash160
 	@$(BUILD)/test_int
 	@sh tests/run_tests.sh ./keyhunt
 	@sh tests/test_kangaroo.sh ./kangaroo
+	@./lcgfit s > /dev/null && echo "[ok]   lcgfit self test"
+	@./lineage selftest 2 > /dev/null && echo "[ok]   lineage self test"
 
 clean:
-	rm -rf $(BUILD) keyhunt bsgsd kangaroo
+	rm -rf $(BUILD) keyhunt bsgsd kangaroo lineage lcgfit
 
 -include $(shell find $(BUILD) -name '*.d' 2>/dev/null)
