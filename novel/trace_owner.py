@@ -88,9 +88,11 @@ for a, rs in roles.items():
         for t in json.loads(get(f"/address/{a}/txs")):
             for v in t["vin"]:
                 if v.get("prevout", {}).get("scriptpubkey_address") == a:
-                    if v.get("scriptsig"):
-                        ss = bytes.fromhex(v["scriptsig"]); l = ss[0]; pub = ss[l + 2:l + 2 + ss[l + 1]].hex()
-                    elif v.get("witness"): pub = v["witness"][-1]
+                    if v.get("witness"): pub = v["witness"][-1]            # native or wrapped segwit: key is the last witness item
+                    elif v.get("scriptsig"):
+                        try:
+                            ss = bytes.fromhex(v["scriptsig"]); l = ss[0]; pub = ss[l + 2:l + 2 + ss[l + 1]].hex() or None
+                        except IndexError: pub = None
                     break
             if pub: break
     rows.append((a, sorted(rs), cs["funded_txo_count"], cs["spent_txo_count"], (cs["funded_txo_sum"] - cs["spent_txo_sum"]) / 1e8, pub))
