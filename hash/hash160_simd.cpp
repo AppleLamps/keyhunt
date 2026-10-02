@@ -123,15 +123,17 @@ void hash160_avx512_2B(const uint32_t *, uint8_t *const[16]) {}
 
 #endif
 
+static int detect_simd_lanes() {
+  const char *env = getenv("KEYHUNT_SIMD");   // "avx2", "avx512" or "none" to force a kernel
+  if (env && strcmp(env, "none") == 0) return 0;
+  if (env && strcmp(env, "avx2") == 0) return hash160_avx2_available() ? 8 : 0;
+  if (hash160_avx512_available() && !(env && strcmp(env, "avx512") != 0)) return 16;
+  return hash160_avx2_available() ? 8 : 0;
+}
+
 int hash160_simd_lanes() {
-  static int lanes = -1;
-  if (lanes < 0) {
-    const char *env = getenv("KEYHUNT_SIMD");   // "avx2", "avx512" or "none" to force a kernel
-    if (env && strcmp(env, "none") == 0) lanes = 0;
-    else if (env && strcmp(env, "avx2") == 0) lanes = hash160_avx2_available() ? 8 : 0;
-    else if (hash160_avx512_available() && !(env && strcmp(env, "avx512") != 0)) lanes = 16;
-    else lanes = hash160_avx2_available() ? 8 : 0;
-  }
+  // Thread safe: the initializer runs exactly once (C++11 static initialization)
+  static const int lanes = detect_simd_lanes();
   return lanes;
 }
 
