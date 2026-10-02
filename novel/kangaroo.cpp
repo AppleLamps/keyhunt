@@ -92,7 +92,7 @@ static std::atomic<uint64_t> fruitless(0), reseeds(0), cycles(0), solve_fail(0),
 static Int key_found;
 
 // Distinguished point table: x (two limbs) -> (sign, distance)
-struct DPEntry { uint64_t x2; int8_t sign; Int dist; };
+struct DPEntry { uint64_t x2; int8_t sign; uint8_t yodd; Int dist; };
 static std::unordered_multimap<uint64_t, DPEntry> dptable;
 static pthread_mutex_t dpmutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -144,6 +144,7 @@ static bool solve(int8_t s1, Int &d1, int8_t s2, Int &d2) {
 // Returns true if a solution was found through this distinguished point
 static bool report_dp(Point &P, int8_t sign, Int &dist) {
   uint64_t k1 = P.x.bits64[1], k2 = P.x.bits64[2];
+  uint8_t yodd = P.y.IsOdd();
   bool hit = false;
   pthread_mutex_lock(&dpmutex);
   auto range = dptable.equal_range(k1);
@@ -151,18 +152,39 @@ static bool report_dp(Point &P, int8_t sign, Int &dist) {
     if (it->second.x2 != k2) continue;
     DPEntry e = it->second;
     pthread_mutex_unlock(&dpmutex);
-    if (solve(e.sign, e.dist, sign, dist)) return true;
+    // Same x but opposite y (only possible with the negation map off): the new
+    // point is -(stored point), i.e. the stored relation holds for (-sign, -dist).
+    int8_t s2 = sign; Int d2(dist);
+    if (e.yodd != yodd) { s2 = -s2; d2.Neg(); }
+    if (solve(e.sign, e.dist, s2, d2)) return true;
     hit = true;     // same point, same herd: nothing to learn, the walker is re-seeded
     pthread_mutex_lock(&dpmutex);
     break;
   }
-  if (!hit) { DPEntry e; e.x2 = k2; e.sign = sign; e.dist.Set(&dist); dptable.emplace(k1, e); dp_count++; }
+  if (!hit) { DPEntry e; e.x2 = k2; e.sign = sign; e.yodd = yodd; e.dist.Set(&dist); dptable.emplace(k1, e); dp_count++; }
   pthread_mutex_unlock(&dpmutex);
   return hit;      // caller re-seeds on a fruitless meeting
 }
 
+static uint64_t base_seed;
+
+static inline uint64_t splitmix64(uint64_t &st) {
+  uint64_t z = (st += 0x9E3779B97F4A7C15ULL);
+  z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
+  z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
+  return z ^ (z >> 31);
+}
+
+// uniform value in [0, bound) from the walker's own stream (bound < 2^256)
+static Int rand_below(Int &bound, uint64_t &st) {
+  Int r; r.SetInt32(0);
+  for (int l = 0; l < 4; l++) { r.ShiftL(64); r.Add(splitmix64(st)); }
+  r.Mod(&bound);
+  return r;
+}
+
 struct Walker {
-  Point P; Int dist; int8_t sign; uint64_t since_dp;
+  Point P; Int dist; int8_t sign; uint64_t since_dp; uint64_t rng;
   // cycle detection: minimum of the current and the previous window
   uint64_t min_x, prev_min_x; Point min_P; Int min_dist; int8_t min_sign; int in_window;
 };
@@ -191,14 +213,21 @@ static Point scalar_point(Int &r) {
 }
 
 static void seed(Walker &w, bool tame) {
-  Int r; r.Rand(&range_start, &range_end);
-  if (gs_mode || !tame) { r.Sub(&range_start); r.Sub(&half_width); }   // [-W/2, W/2)
+  Int r;
+  for (;;) {
+    r = rand_below(range_width, w.rng); r.Add(&range_start);
+    if (gs_mode || !tame) { r.Sub(&range_start); r.Sub(&half_width); }   // [-W/2, W/2)
+    if (r.IsZero()) continue;                 // the identity has no affine form
+    if (tame) break;
+    Point R = scalar_point(r);
+    if (R.x.IsEqual(&Qc.x)) continue;         // Qc + (+-Qc): doubling or the identity
+    w.P = secp->AddDirect(Qc, R);
+    break;
+  }
   if (tame) {
     w.P = scalar_point(r);
     w.dist.Set(&r); w.sign = 0;
   } else {
-    Point R = scalar_point(r);
-    w.P = secp->AddDirect(Qc, R);
     w.dist.Set(&r); w.sign = 1;
   }
   w.since_dp = 0;
@@ -212,11 +241,15 @@ static void seed(Walker &w, bool tame) {
 // restart is still a function of the walk.
 static void gs_restart(Walker &w) {
   int i = (int)(w.P.x.bits64[2] % RESTARTS);
+  if (restartP[i].x.IsEqual(&w.P.x)) { seed(w, w.sign == 0); return; }   // no affine sum
   w.P = secp->AddDirect(w.P, restartP[i]);
   w.dist.Add(&restartD[i]);
   // the position of a walker is sign*k' + dist; only dist is known, wrap it
   // (k' is in [-W/2, W/2] too, so the sum stays within one width of the set)
-  if (w.dist.IsGreaterOrEqual(&half_width)) { w.dist.Sub(&range_width); Point nw = secp->Negation(widthP); w.P = secp->AddDirect(w.P, nw); }
+  if (w.dist.IsGreaterOrEqual(&half_width)) {
+    if (widthP.x.IsEqual(&w.P.x)) { seed(w, w.sign == 0); return; }
+    w.dist.Sub(&range_width); Point nw = secp->Negation(widthP); w.P = secp->AddDirect(w.P, nw);
+  }
   reset_cycle_state(w);
   canonicalize(w);
 }
@@ -243,7 +276,12 @@ static void *worker(void *arg) {
   int id = (int)(intptr_t)arg;
   int K = per_thread;
   std::vector<Walker> w(K);
-  for (int i = 0; i < K; i++) seed(w[i], (i & 1) == 0);   // half tame, half wild
+  for (int i = 0; i < K; i++) {
+    // each walker owns a stream derived from the run seed, its thread and its index
+    w[i].rng = base_seed ^ ((uint64_t)(id + 1) << 40) ^ ((uint64_t)(i + 1) << 8);
+    splitmix64(w[i].rng);
+    seed(w[i], (i & 1) == 0);   // half tame, half wild
+  }
   std::vector<Int> dx(K);
   IntGroup grp(K); grp.Set(dx.data());
   std::vector<uint8_t> idx(K);
@@ -319,7 +357,7 @@ int main(int argc, char **argv) {
   if (!pub || !range) usage();
   use_negation = negation_opt < 0 ? gs_mode : (negation_opt == 1);
   secp = new Secp256K1(); secp->Init();
-  if (have_seed) rseed(seedv); else rseed((unsigned long)time(NULL) ^ (unsigned long)getpid());
+  base_seed = have_seed ? seedv : ((uint64_t)time(NULL) * 0x9E3779B97F4A7C15ULL) ^ ((uint64_t)getpid() << 32);
 
   bool comp;
   char pubbuf[200]; strncpy(pubbuf, pub, 199); pubbuf[199] = 0;
@@ -334,6 +372,10 @@ int main(int argc, char **argv) {
   centre.Set(&range_start); centre.Add(&half_width);
   if (gs_mode) {
     Point C = secp->ComputePublicKey(&centre);
+    if (C.x.IsEqual(&Q.x) && C.y.IsEqual(&Q.y)) {      // k is the midpoint: Q - c*G would be the identity
+      char *kh = centre.GetBase16(); printf("[+] found privkey %s (interval midpoint)\n", kh); free(kh);
+      return 0;
+    }
     Point nC = secp->Negation(C);
     Qc = secp->AddDirect(Q, nC);                     // Q' = Q - c*G, k' in [-W/2, W/2]
     widthP = secp->ComputePublicKey(&range_width);
@@ -359,9 +401,8 @@ int main(int argc, char **argv) {
     mean_bits = wbits - dp_bits - 6; if (mean_bits < 8) mean_bits = 8;
   }
   Int mean; mean.SetInt32(1); mean.ShiftL(mean_bits);
-  uint64_t rs = 0x9E3779B97F4A7C15ULL;          // splitmix64, fixed seed: same table in every run
-  auto nextrand = [&rs]() { uint64_t z = (rs += 0x9E3779B97F4A7C15ULL); z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL; z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL; return z ^ (z >> 31); };
-  auto random_below = [&](Int &bound) { Int r; r.SetInt32(0); for (int l = 0; l < 4; l++) { r.ShiftL(64); r.Add(nextrand()); } r.Mod(&bound); return r; };
+  uint64_t rs = 0x9E3779B97F4A7C15ULL;          // fixed seed: the same jump table in every run
+  auto random_below = [&](Int &bound) { return rand_below(bound, rs); };
   for (int i = 0; i < JUMPS; i++) {
     jumpD[i].Set(&mean); jumpD[i].ShiftR(1);
     Int r = random_below(mean); jumpD[i].Add(&r);   // [mean/2, 3*mean/2)
