@@ -26,6 +26,7 @@ email: albertobsd@gmail.com
 
 #include "hash/sha256.h"
 #include "hash/ripemd160.h"
+#include "hash/hash160_avx2.h"
 
 #if defined(_WIN64) && !defined(__CYGWIN__)
 #include "getopt.h"
@@ -2538,6 +2539,9 @@ void *thread_process(void *vargp)	{
 	char publickeyhashrmd160_endomorphism[12][4][20];
 	
 	bool calculate_y = FLAGSEARCH == SEARCH_UNCOMPRESS || FLAGSEARCH == SEARCH_BOTH || FLAGCRYPTO  == CRYPTO_ETH;
+	bool use_avx2 = (FLAGMODE == MODE_ADDRESS || FLAGMODE == MODE_RMD160) && FLAGCRYPTO == CRYPTO_BTC && !FLAGENDOMORPHISM && hash160_avx2_available();
+	char hash160_avx2_c[2][8][20];
+	char hash160_avx2_u[8][20];
 	Int key_mpz,keyfound,temp_stride;
 	tt = (struct tothread *)vargp;
 	thread_number = tt->nt;
@@ -2710,7 +2714,54 @@ void *thread_process(void *vargp)	{
 					endomorphism_beta2[0].x.ModMulK1(&pn.x, &beta2);
 				}
 								
-				for(j = 0; j < CPU_GRP_SIZE/4;j++){
+				j = 0;
+				if(use_avx2)	{
+					/*
+						8 points per iteration with the AVX2 hash160 kernels.
+						Same checks as the 4 way loop below for the plain (non endomorphism) BTC case.
+					*/
+					for(; j < CPU_GRP_SIZE/4; j += 2)	{
+						Point *grp8 = &pts[j*4];
+						uint8_t *hp[8];
+						if(FLAGSEARCH == SEARCH_COMPRESS || FLAGSEARCH == SEARCH_BOTH)	{
+							for(l = 0; l < 2; l++)	{
+								for(k = 0; k < 8; k++)	hp[k] = (uint8_t*)hash160_avx2_c[l][k];
+								secp->GetHash160_fromX_8((unsigned char)(0x02 + l),grp8,hp);
+								for(k = 0; k < 8; k++)	{
+									if(bloom_check(&bloom,hash160_avx2_c[l][k],MAXLENGTHADDRESS) && searchbinary(addressTable,hash160_avx2_c[l][k],N))	{
+										keyfound.SetInt32(k);
+										keyfound.Mult(&stride);
+										keyfound.Add(&key_mpz);
+										publickey = secp->ComputePublicKey(&keyfound);
+										secp->GetHash160(P2PKH,true,publickey,(uint8_t*)publickeyhashrmd160);
+										if(memcmp(hash160_avx2_c[l][k],publickeyhashrmd160,20) != 0)	{
+											keyfound.Neg();
+											keyfound.Add(&secp->order);
+										}
+										writekey(true,&keyfound);
+									}
+								}
+							}
+						}
+						if(FLAGSEARCH == SEARCH_UNCOMPRESS || FLAGSEARCH == SEARCH_BOTH)	{
+							for(k = 0; k < 8; k++)	hp[k] = (uint8_t*)hash160_avx2_u[k];
+							secp->GetHash160_8(false,grp8,hp);
+							for(k = 0; k < 8; k++)	{
+								if(bloom_check(&bloom,hash160_avx2_u[k],MAXLENGTHADDRESS) && searchbinary(addressTable,hash160_avx2_u[k],N))	{
+									keyfound.SetInt32(k);
+									keyfound.Mult(&stride);
+									keyfound.Add(&key_mpz);
+									writekey(false,&keyfound);
+								}
+							}
+						}
+						count += 8;
+						temp_stride.SetInt32(8);
+						temp_stride.Mult(&stride);
+						key_mpz.Add(&temp_stride);
+					}
+				}
+				for(; j < CPU_GRP_SIZE/4;j++){
 					switch(FLAGMODE)	{
 						case MODE_RMD160:
 						case MODE_ADDRESS:

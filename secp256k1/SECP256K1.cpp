@@ -22,6 +22,7 @@
 #include "../util.h"
 #include "../hash/sha256.h"
 #include "../hash/ripemd160.h"
+#include "../hash/hash160_avx2.h"
 
 Secp256K1::Secp256K1() {
 }
@@ -788,3 +789,32 @@ void Secp256K1::GetHash160_fromX(int type,unsigned char prefix,
   }
 }
 
+
+
+void Secp256K1::GetHash160_8(bool compressed, Point *k, uint8_t *const h[8]) {
+  uint32_t b[8][32];
+  const uint32_t *in[8];
+  for (int i = 0; i < 8; i++) {
+    if (compressed) {
+      KEYBUFFCOMP(b[i], k[i]);
+    } else {
+      KEYBUFFUNCOMP(b[i], k[i]);
+    }
+    in[i] = b[i];
+  }
+  if (compressed)
+    hash160_avx2_1B(in, h);
+  else
+    hash160_avx2_2B(in, h);
+}
+
+void Secp256K1::GetHash160_fromX_8(unsigned char prefix, Point *k, uint8_t *const h[8]) {
+  uint32_t b[8][16];
+  const uint32_t *in[8];
+  for (int i = 0; i < 8; i++) {
+    Int *x = &k[i].x;
+    KEYBUFFPREFIX(b[i], x, prefix);
+    in[i] = b[i];
+  }
+  hash160_avx2_1B(in, h);
+}

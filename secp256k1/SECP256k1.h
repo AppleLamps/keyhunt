@@ -58,6 +58,11 @@ public:
   Int *k0,Int *k1,Int *k2,Int *k3,
   uint8_t *h0,uint8_t *h1,uint8_t *h2,uint8_t *h3);
 
+  // 8-way AVX2 P2PKH hash160 of k[0..7]. Only call when hash160_avx2_available().
+  // GetHash160_8 hashes the point itself (compressed prefix follows y parity),
+  // GetHash160_fromX_8 hashes the compressed form of k[i].x with the given prefix.
+  void GetHash160_8(bool compressed, Point *k, uint8_t *const h[8]);
+  void GetHash160_fromX_8(unsigned char prefix, Point *k, uint8_t *const h[8]);
 
   Point Add(Point &p1, Point &p2);
   Point Add2(Point &p1, Point &p2);
