@@ -1,50 +1,42 @@
 /*
- * 8-way AVX2 SHA256 + RIPEMD160 ("hash160") kernels.
+ * Lane parallel SHA256 + RIPEMD160 ("hash160") kernel, instantiated by
+ * hash160_simd.cpp once per vector extension. The including file defines:
+ *
+ *   VEC          vector type (__m256i, __m512i)
+ *   LANES        32 bit lanes per vector
+ *   KFN          function attributes (target(...))
+ *   SFX          name suffix: the kernels are hash160_<SFX>_1B / _2B
+ *   VADD VXOR VAND VOR VANDN(a,b)=~a&b  VSRL(x,n) VSET1(i) VZERO() VLOAD(p) VSTORE(p,v)
+ *   VROR(x,n) VROL(x,n)
+ *   VCH(e,f,g)=(e&f)^(~e&g)  VMAJ(a,b,c)  VXOR3(a,b,c)
+ *   VF3(x,y,z)=(x|~y)^z  VF4(x,y,z)=(x&z)|(y&~z)  VF5(x,y,z)=x^(y|~z)
+ *   VBSWAP(x)    byte swap every 32 bit lane
  *
  * Derived from the 4-way SSE kernels (hash/sha256_sse.cpp, hash/ripemd160_sse.cpp,
  * VanitySearch, Copyright (c) 2019 Jean Luc PONS, GPLv3). The SHA256 digest is
- * fed straight into RIPEMD160 in registers, saving the byte swap, the store
- * and the reload that the 4-way pair of kernels needs.
- *
- * The kernels carry a function-level target("avx2") attribute, so this file
- * builds without -mavx2 and callers pick it at runtime with
- * hash160_avx2_available().
+ * fed straight into RIPEMD160 in registers.
  */
 
-#include "hash160_avx2.h"
-
-#if defined(__x86_64__) || defined(__i386__)
-
-#include <immintrin.h>
-#include <string.h>
-
-#define AVX2_FN __attribute__((target("avx2")))
-
-bool hash160_avx2_available() {
-  return __builtin_cpu_supports("avx2");
-}
+#define KCAT_(a, b, c) a##b##c
+#define KCAT(a, b, c) KCAT_(a, b, c)
+#define KNAME(n) KCAT(hash160_, SFX, n)
 
 namespace {
 
-#define Maj(b,c,d) _mm256_or_si256(_mm256_and_si256(b, c), _mm256_and_si256(d, _mm256_or_si256(b, c)))
-#define Ch(b,c,d)  _mm256_xor_si256(_mm256_and_si256(b, c), _mm256_andnot_si256(b, d))
-#define ROR(x,n)   _mm256_or_si256(_mm256_srli_epi32(x, n), _mm256_slli_epi32(x, 32 - n))
-#define SHR(x,n)   _mm256_srli_epi32(x, n)
+#define S0(x) VXOR3(VROR((x), 2), VROR((x), 13), VROR((x), 22))
+#define S1(x) VXOR3(VROR((x), 6), VROR((x), 11), VROR((x), 25))
+#define s0(x) VXOR3(VROR((x), 7), VROR((x), 18), VSRL((x), 3))
+#define s1(x) VXOR3(VROR((x), 17), VROR((x), 19), VSRL((x), 10))
 
-#define S0(x) (_mm256_xor_si256(ROR((x), 2), _mm256_xor_si256(ROR((x), 13), ROR((x), 22))))
-#define S1(x) (_mm256_xor_si256(ROR((x), 6), _mm256_xor_si256(ROR((x), 11), ROR((x), 25))))
-#define s0(x) (_mm256_xor_si256(ROR((x), 7), _mm256_xor_si256(ROR((x), 18), SHR((x), 3))))
-#define s1(x) (_mm256_xor_si256(ROR((x), 17), _mm256_xor_si256(ROR((x), 19), SHR((x), 10))))
+#define add3(x0, x1, x2) VADD(VADD(x0, x1), x2)
+#define add4(x0, x1, x2, x3) VADD(VADD(x0, x1), VADD(x2, x3))
+#define add5(x0, x1, x2, x3, x4) VADD(add3(x0, x1, x2), VADD(x3, x4))
 
-#define add4(x0, x1, x2, x3) _mm256_add_epi32(_mm256_add_epi32(x0, x1), _mm256_add_epi32(x2, x3))
-#define add3(x0, x1, x2) _mm256_add_epi32(_mm256_add_epi32(x0, x1), x2)
-#define add5(x0, x1, x2, x3, x4) _mm256_add_epi32(add3(x0, x1, x2), _mm256_add_epi32(x3, x4))
-
-#define Round(a, b, c, d, e, f, g, h, i, w)                    \
-    T1 = add5(h, S1(e), Ch(e, f, g), _mm256_set1_epi32(i), w); \
-    d = _mm256_add_epi32(d, T1);                               \
-    T2 = _mm256_add_epi32(S0(a), Maj(a, b, c));                \
-    h = _mm256_add_epi32(T1, T2);
+#define Round(a, b, c, d, e, f, g, h, i, w)          \
+    T1 = add5(h, S1(e), VCH(e, f, g), VSET1(i), w);  \
+    d = VADD(d, T1);                                 \
+    T2 = VADD(S0(a), VMAJ(a, b, c));                 \
+    h = VADD(T1, T2);
 
 #define WMIX() \
   w0 = add4(s1(w14), w9, s0(w1), w0); \
@@ -64,53 +56,16 @@ namespace {
   w14 = add4(s1(w12), w7, s0(w15), w14); \
   w15 = add4(s1(w13), w8, s0(w0), w15);
 
-// Transpose an 8x8 matrix of 32-bit words: row r holds the words of one lane
-// on entry, row j holds word j of every lane on exit.
-AVX2_FN static inline void transpose8(__m256i *r) {
-  __m256i t0 = _mm256_unpacklo_epi32(r[0], r[1]);
-  __m256i t1 = _mm256_unpackhi_epi32(r[0], r[1]);
-  __m256i t2 = _mm256_unpacklo_epi32(r[2], r[3]);
-  __m256i t3 = _mm256_unpackhi_epi32(r[2], r[3]);
-  __m256i t4 = _mm256_unpacklo_epi32(r[4], r[5]);
-  __m256i t5 = _mm256_unpackhi_epi32(r[4], r[5]);
-  __m256i t6 = _mm256_unpacklo_epi32(r[6], r[7]);
-  __m256i t7 = _mm256_unpackhi_epi32(r[6], r[7]);
-
-  __m256i u0 = _mm256_unpacklo_epi64(t0, t2);
-  __m256i u1 = _mm256_unpackhi_epi64(t0, t2);
-  __m256i u2 = _mm256_unpacklo_epi64(t1, t3);
-  __m256i u3 = _mm256_unpackhi_epi64(t1, t3);
-  __m256i u4 = _mm256_unpacklo_epi64(t4, t6);
-  __m256i u5 = _mm256_unpackhi_epi64(t4, t6);
-  __m256i u6 = _mm256_unpacklo_epi64(t5, t7);
-  __m256i u7 = _mm256_unpackhi_epi64(t5, t7);
-
-  r[0] = _mm256_permute2x128_si256(u0, u4, 0x20);
-  r[1] = _mm256_permute2x128_si256(u1, u5, 0x20);
-  r[2] = _mm256_permute2x128_si256(u2, u6, 0x20);
-  r[3] = _mm256_permute2x128_si256(u3, u7, 0x20);
-  r[4] = _mm256_permute2x128_si256(u0, u4, 0x31);
-  r[5] = _mm256_permute2x128_si256(u1, u5, 0x31);
-  r[6] = _mm256_permute2x128_si256(u2, u6, 0x31);
-  r[7] = _mm256_permute2x128_si256(u3, u7, 0x31);
-}
-
-// Load words [off, off + 16) of the 8 messages as 16 lane-parallel words.
-AVX2_FN static inline void load_block(const uint32_t *const in[8], int off, __m256i *w) {
-  for (int h = 0; h < 2; h++) {
-    for (int l = 0; l < 8; l++)
-      w[h * 8 + l] = _mm256_loadu_si256((const __m256i *)(in[l] + off + h * 8));
-    transpose8(w + h * 8);
-  }
-}
-
-// One SHA256 block over the state s[0..7] (lane-parallel), message w[0..15].
-AVX2_FN static inline void sha256_block(__m256i *s, __m256i *w) {
-  __m256i a = s[0], b = s[1], c = s[2], d = s[3];
-  __m256i e = s[4], f = s[5], g = s[6], h = s[7];
-  __m256i w0 = w[0], w1 = w[1], w2 = w[2], w3 = w[3], w4 = w[4], w5 = w[5], w6 = w[6], w7 = w[7];
-  __m256i w8 = w[8], w9 = w[9], w10 = w[10], w11 = w[11], w12 = w[12], w13 = w[13], w14 = w[14], w15 = w[15];
-  __m256i T1, T2;
+// One SHA256 block over the lane parallel state s[0..7], message words
+// in[0..15] in lane parallel layout.
+KFN static inline void KNAME(_sha256_block)(VEC *s, const uint32_t *in) {
+  VEC a = s[0], b = s[1], c = s[2], d = s[3];
+  VEC e = s[4], f = s[5], g = s[6], h = s[7];
+  VEC w0 = VLOAD(in + 0 * LANES), w1 = VLOAD(in + 1 * LANES), w2 = VLOAD(in + 2 * LANES), w3 = VLOAD(in + 3 * LANES);
+  VEC w4 = VLOAD(in + 4 * LANES), w5 = VLOAD(in + 5 * LANES), w6 = VLOAD(in + 6 * LANES), w7 = VLOAD(in + 7 * LANES);
+  VEC w8 = VLOAD(in + 8 * LANES), w9 = VLOAD(in + 9 * LANES), w10 = VLOAD(in + 10 * LANES), w11 = VLOAD(in + 11 * LANES);
+  VEC w12 = VLOAD(in + 12 * LANES), w13 = VLOAD(in + 13 * LANES), w14 = VLOAD(in + 14 * LANES), w15 = VLOAD(in + 15 * LANES);
+  VEC T1, T2;
 
     Round(a, b, c, d, e, f, g, h, 0x428A2F98, w0);
     Round(h, a, b, c, d, e, f, g, 0x71374491, w1);
@@ -186,87 +141,72 @@ AVX2_FN static inline void sha256_block(__m256i *s, __m256i *w) {
     Round(c, d, e, f, g, h, a, b, 0xBEF9A3F7, w14);
     Round(b, c, d, e, f, g, h, a, 0xC67178F2, w15);
 
-  s[0] = _mm256_add_epi32(a, s[0]);
-  s[1] = _mm256_add_epi32(b, s[1]);
-  s[2] = _mm256_add_epi32(c, s[2]);
-  s[3] = _mm256_add_epi32(d, s[3]);
-  s[4] = _mm256_add_epi32(e, s[4]);
-  s[5] = _mm256_add_epi32(f, s[5]);
-  s[6] = _mm256_add_epi32(g, s[6]);
-  s[7] = _mm256_add_epi32(h, s[7]);
+  s[0] = VADD(a, s[0]);
+  s[1] = VADD(b, s[1]);
+  s[2] = VADD(c, s[2]);
+  s[3] = VADD(d, s[3]);
+  s[4] = VADD(e, s[4]);
+  s[5] = VADD(f, s[5]);
+  s[6] = VADD(g, s[6]);
+  s[7] = VADD(h, s[7]);
 }
 
-AVX2_FN static inline void sha256_init(__m256i *s) {
-  s[0] = _mm256_set1_epi32(0x6a09e667);
-  s[1] = _mm256_set1_epi32(0xbb67ae85);
-  s[2] = _mm256_set1_epi32(0x3c6ef372);
-  s[3] = _mm256_set1_epi32(0xa54ff53a);
-  s[4] = _mm256_set1_epi32(0x510e527f);
-  s[5] = _mm256_set1_epi32(0x9b05688c);
-  s[6] = _mm256_set1_epi32(0x1f83d9ab);
-  s[7] = _mm256_set1_epi32(0x5be0cd19);
+KFN static inline void KNAME(_sha256_init)(VEC *s) {
+  s[0] = VSET1(0x6a09e667);
+  s[1] = VSET1(0xbb67ae85);
+  s[2] = VSET1(0x3c6ef372);
+  s[3] = VSET1(0xa54ff53a);
+  s[4] = VSET1(0x510e527f);
+  s[5] = VSET1(0x9b05688c);
+  s[6] = VSET1(0x1f83d9ab);
+  s[7] = VSET1(0x5be0cd19);
 }
 
-#undef Maj
-#undef Ch
-#undef ROR
-#undef SHR
 #undef S0
 #undef S1
 #undef s0
 #undef s1
 #undef Round
+#undef WMIX
 
 // RIPEMD160 ------------------------------------------------------------------
 
-#define ROL(x,n) _mm256_or_si256(_mm256_slli_epi32(x, n), _mm256_srli_epi32(x, 32 - n))
-#define NOT(x) _mm256_xor_si256(x, _mm256_set1_epi32(-1))
+#define RRound(a,b,c,d,e,f,x,k,r) \
+  u = add4(a,f,x,VSET1(k)); \
+  a = VADD(VROL(u, r),e); \
+  c = VROL(c, 10);
 
-#define f1(x,y,z) _mm256_xor_si256(x, _mm256_xor_si256(y, z))
-#define f2(x,y,z) _mm256_or_si256(_mm256_and_si256(x,y),_mm256_andnot_si256(x,z))
-#define f3(x,y,z) _mm256_xor_si256(_mm256_or_si256(x,NOT(y)),z)
-#define f4(x,y,z) _mm256_or_si256(_mm256_and_si256(x,z),_mm256_andnot_si256(z,y))
-#define f5(x,y,z) _mm256_xor_si256(x,_mm256_or_si256(y,NOT(z)))
+#define R11(a,b,c,d,e,x,r) RRound(a, b, c, d, e, VXOR3(b, c, d), x, 0, r)
+#define R21(a,b,c,d,e,x,r) RRound(a, b, c, d, e, VCH(b, c, d), x, 0x5A827999ul, r)
+#define R31(a,b,c,d,e,x,r) RRound(a, b, c, d, e, VF3(b, c, d), x, 0x6ED9EBA1ul, r)
+#define R41(a,b,c,d,e,x,r) RRound(a, b, c, d, e, VF4(b, c, d), x, 0x8F1BBCDCul, r)
+#define R51(a,b,c,d,e,x,r) RRound(a, b, c, d, e, VF5(b, c, d), x, 0xA953FD4Eul, r)
+#define R12(a,b,c,d,e,x,r) RRound(a, b, c, d, e, VF5(b, c, d), x, 0x50A28BE6ul, r)
+#define R22(a,b,c,d,e,x,r) RRound(a, b, c, d, e, VF4(b, c, d), x, 0x5C4DD124ul, r)
+#define R32(a,b,c,d,e,x,r) RRound(a, b, c, d, e, VF3(b, c, d), x, 0x6D703EF3ul, r)
+#define R42(a,b,c,d,e,x,r) RRound(a, b, c, d, e, VCH(b, c, d), x, 0x7A6D76E9ul, r)
+#define R52(a,b,c,d,e,x,r) RRound(a, b, c, d, e, VXOR3(b, c, d), x, 0, r)
 
-#define Round(a,b,c,d,e,f,x,k,r) \
-  u = add4(a,f,x,_mm256_set1_epi32(k)); \
-  a = _mm256_add_epi32(ROL(u, r),e); \
-  c = ROL(c, 10);
-
-#define R11(a,b,c,d,e,x,r) Round(a, b, c, d, e, f1(b, c, d), x, 0, r)
-#define R21(a,b,c,d,e,x,r) Round(a, b, c, d, e, f2(b, c, d), x, 0x5A827999ul, r)
-#define R31(a,b,c,d,e,x,r) Round(a, b, c, d, e, f3(b, c, d), x, 0x6ED9EBA1ul, r)
-#define R41(a,b,c,d,e,x,r) Round(a, b, c, d, e, f4(b, c, d), x, 0x8F1BBCDCul, r)
-#define R51(a,b,c,d,e,x,r) Round(a, b, c, d, e, f5(b, c, d), x, 0xA953FD4Eul, r)
-#define R12(a,b,c,d,e,x,r) Round(a, b, c, d, e, f5(b, c, d), x, 0x50A28BE6ul, r)
-#define R22(a,b,c,d,e,x,r) Round(a, b, c, d, e, f4(b, c, d), x, 0x5C4DD124ul, r)
-#define R32(a,b,c,d,e,x,r) Round(a, b, c, d, e, f3(b, c, d), x, 0x6D703EF3ul, r)
-#define R42(a,b,c,d,e,x,r) Round(a, b, c, d, e, f2(b, c, d), x, 0x7A6D76E9ul, r)
-#define R52(a,b,c,d,e,x,r) Round(a, b, c, d, e, f1(b, c, d), x, 0, r)
-
-// RIPEMD160 of the 32 byte SHA256 digest held in the lane-parallel state
-// sha[0..7] (big endian words). Result is returned in out[0..4] as the
-// little endian words of the 20 byte digest.
-AVX2_FN static inline void ripemd160_of_sha(const __m256i *sha, __m256i *out) {
-  const __m256i bswap = _mm256_setr_epi8(
-    3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12,
-    3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12);
-  __m256i w[16];
+// RIPEMD160 of the 32 byte SHA256 digest held in the lane parallel state
+// sha[0..7] (big endian words). Result in out[0..4]: the little endian words
+// of the 20 byte digest.
+KFN static inline void KNAME(_ripemd160_of_sha)(const VEC *sha, VEC *out) {
+  VEC w[16];
   for (int i = 0; i < 8; i++)
-    w[i] = _mm256_shuffle_epi8(sha[i], bswap);
-  w[8] = _mm256_set1_epi32(0x80);   // padding: 0x80, then zeros
-  w[9] = w[10] = w[11] = w[12] = w[13] = _mm256_setzero_si256();
-  w[14] = _mm256_set1_epi32(32 << 3);   // message length in bits
-  w[15] = _mm256_setzero_si256();
+    w[i] = VBSWAP(sha[i]);
+  w[8] = VSET1(0x80);   // padding: 0x80, then zeros
+  w[9] = w[10] = w[11] = w[12] = w[13] = VZERO();
+  w[14] = VSET1(32 << 3);   // message length in bits
+  w[15] = VZERO();
 
-  __m256i s0 = _mm256_set1_epi32(0x67452301);
-  __m256i s1 = _mm256_set1_epi32(0xEFCDAB89);
-  __m256i s2 = _mm256_set1_epi32(0x98BADCFE);
-  __m256i s3 = _mm256_set1_epi32(0x10325476);
-  __m256i s4 = _mm256_set1_epi32(0xC3D2E1F0);
-  __m256i a1 = s0, b1 = s1, c1 = s2, d1 = s3, e1 = s4;
-  __m256i a2 = s0, b2 = s1, c2 = s2, d2 = s3, e2 = s4;
-  __m256i u;
+  VEC s0 = VSET1(0x67452301);
+  VEC s1 = VSET1(0xEFCDAB89);
+  VEC s2 = VSET1(0x98BADCFE);
+  VEC s3 = VSET1(0x10325476);
+  VEC s4 = VSET1(0xC3D2E1F0);
+  VEC a1 = s0, b1 = s1, c1 = s2, d1 = s3, e1 = s4;
+  VEC a2 = s0, b2 = s1, c2 = s2, d2 = s3, e2 = s4;
+  VEC u;
 
     R11(a1, b1, c1, d1, e1, w[0], 11);
     R12(a2, b2, c2, d2, e2, w[5], 8);
@@ -440,45 +380,50 @@ AVX2_FN static inline void ripemd160_of_sha(const __m256i *sha, __m256i *out) {
   out[4] = add3(s0, b1, c2);
 }
 
-// Write the 5 lane-parallel result words as 8 consecutive 20 byte digests.
-AVX2_FN static inline void store_digests(const __m256i *h, uint8_t *const out[8]) {
-  __m256i r[8];
-  for (int i = 0; i < 5; i++) r[i] = h[i];
-  r[5] = r[6] = r[7] = _mm256_setzero_si256();
-  transpose8(r);
-  for (int l = 0; l < 8; l++) {
-    _mm_storeu_si128((__m128i *)out[l], _mm256_castsi256_si128(r[l]));
-    uint32_t last = (uint32_t)_mm256_extract_epi32(r[l], 4);
-    memcpy(out[l] + 16, &last, 4);
+#undef RRound
+#undef R11
+#undef R21
+#undef R31
+#undef R41
+#undef R51
+#undef R12
+#undef R22
+#undef R32
+#undef R42
+#undef R52
+#undef add3
+#undef add4
+#undef add5
+
+// Write the 5 lane parallel result words as LANES separate 20 byte digests.
+KFN static inline void KNAME(_store_digests)(const VEC *h, uint8_t *const *out) {
+  uint32_t t[5][LANES];
+  for (int i = 0; i < 5; i++) VSTORE(t[i], h[i]);
+  for (int l = 0; l < LANES; l++) {
+    uint32_t d[5] = { t[0][l], t[1][l], t[2][l], t[3][l], t[4][l] };
+    memcpy(out[l], d, 20);
   }
 }
 
 } // namespace
 
-AVX2_FN void hash160_avx2_1B(const uint32_t *const in[8], uint8_t *const out[8]) {
-  __m256i w[16], s[8], h[5];
-  load_block(in, 0, w);
-  sha256_init(s);
-  sha256_block(s, w);
-  ripemd160_of_sha(s, h);
-  store_digests(h, out);
+KFN void KNAME(_1B)(const uint32_t *w, uint8_t *const out[LANES]) {
+  VEC s[8], h[5];
+  KNAME(_sha256_init)(s);
+  KNAME(_sha256_block)(s, w);
+  KNAME(_ripemd160_of_sha)(s, h);
+  KNAME(_store_digests)(h, out);
 }
 
-AVX2_FN void hash160_avx2_2B(const uint32_t *const in[8], uint8_t *const out[8]) {
-  __m256i w[16], s[8], h[5];
-  sha256_init(s);
-  load_block(in, 0, w);
-  sha256_block(s, w);
-  load_block(in, 16, w);
-  sha256_block(s, w);
-  ripemd160_of_sha(s, h);
-  store_digests(h, out);
+KFN void KNAME(_2B)(const uint32_t *w, uint8_t *const out[LANES]) {
+  VEC s[8], h[5];
+  KNAME(_sha256_init)(s);
+  KNAME(_sha256_block)(s, w);
+  KNAME(_sha256_block)(s, w + 16 * LANES);
+  KNAME(_ripemd160_of_sha)(s, h);
+  KNAME(_store_digests)(h, out);
 }
 
-#else  // not x86
-
-bool hash160_avx2_available() { return false; }
-void hash160_avx2_1B(const uint32_t *const[8], uint8_t *const[8]) {}
-void hash160_avx2_2B(const uint32_t *const[8], uint8_t *const[8]) {}
-
-#endif
+#undef KCAT_
+#undef KCAT
+#undef KNAME

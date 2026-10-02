@@ -74,7 +74,7 @@ Keyhunt is developed on Linux. On Windows use [WSL](https://learn.microsoft.com/
 ### Requirements
 
 - a C and C++ compiler with C++17 support (GCC or Clang) and `make`
-- an x86-64 CPU with SSSE3 for the main build; with AVX2, address and rmd160 mode (without `-e`, Bitcoin) use a faster 8-way hash path, chosen at run time, so the same binary still runs on older CPUs
+- an x86-64 CPU with SSSE3 for the main build; with AVX2 or AVX-512, address and rmd160 mode (without `-e`, Bitcoin) use an 8-way or 16-way hash path, chosen at run time, so the same binary still runs on older CPUs. `KEYHUNT_SIMD=avx2` (or `none`) in the environment forces a narrower path, for CPUs where AVX-512 lowers the clock too much
 - `libssl-dev` and `libgmp-dev` only for the `legacy` build
 
 On Debian or Ubuntu:
@@ -435,7 +435,8 @@ Multiplying the last key by `lambda` once more gives back the first one.
 For address, rmd160, xpoint and vanity mode each thread works in groups of 1024 keys and counts one step per group, so one step is 1024 keys.
 
 - With `-e` the count is multiplied by 6 (address, rmd160, vanity) because six keys are checked per point, and by 3 in xpoint mode, where the negated points are not needed.
-- For `-l compress` **without** `-e` the shown speed is doubled: from each X value the program checks both the `02` and the `03` prefix, which is how the keys `k` and `-k` are both covered. For a puzzle range only one of them can be in range, so the useful speed is half of what is shown. When you search the whole curve the shown speed is correct.
+- In address and rmd160 mode without `-e` every key is hashed exactly once, so the shown speed is the real one. (Older versions hashed each X with both the `02` and the `03` prefix, which checks `k` and `n-k`; `n-k` is never in a puzzle range, so the shown speed was double the useful one. The Y coordinate is now computed instead, which is far cheaper than a second hash.)
+- In vanity mode with `-l compress` the shown speed is still doubled: there every hash is a usable key, so both prefixes are checked.
 
 In BSGS mode the speed is the size of the range covered per second, not the number of points computed. If it shows `0 keys/s` see the [FAQ](#faq).
 
@@ -458,7 +459,8 @@ make test
 
 builds the project and runs
 
-- `tests/test_hash160.cpp`: cross-checks the 8-way AVX2 hash kernels, and the `Secp256K1` wrappers that call them, against the scalar SHA-256 and RIPEMD-160 (skipped on CPUs without AVX2)
+- `tests/test_hash160.cpp`: cross-checks the 8-way AVX2 and 16-way AVX-512 hash kernels, and the `Secp256K1` wrappers that call them, against the scalar SHA-256 and RIPEMD-160 (each kernel is tested where the CPU supports it)
+- `tests/test_int.cpp`: checks the secp256k1 field arithmetic fast paths (modular add, sub, neg, squaring, batch inversion) against reference computations
 - `tests/run_tests.sh [path/to/keyhunt]`: end to end runs over the first puzzle keys (address, rmd160 in compressed, uncompressed and both modes, endomorphism, one thread, BSGS), checking the number of hits and that the program exits cleanly
 
 The script works with the `legacy` binary too. CI builds `keyhunt`, `bsgsd` and the legacy variant, runs `make test`, and repeats the end to end tests under the sanitizers (`make SANITIZE=1`) on every push.

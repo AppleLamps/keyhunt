@@ -22,7 +22,7 @@
 #include "../util.h"
 #include "../hash/sha256.h"
 #include "../hash/ripemd160.h"
-#include "../hash/hash160_avx2.h"
+#include "../hash/hash160_simd.h"
 
 Secp256K1::Secp256K1() {
 }
@@ -791,30 +791,60 @@ void Secp256K1::GetHash160_fromX(int type,unsigned char prefix,
 
 
 
-void Secp256K1::GetHash160_8(bool compressed, Point *k, uint8_t *const h[8]) {
-  uint32_t b[8][32];
-  const uint32_t *in[8];
-  for (int i = 0; i < 8; i++) {
-    if (compressed) {
-      KEYBUFFCOMP(b[i], k[i]);
-    } else {
-      KEYBUFFUNCOMP(b[i], k[i]);
-    }
-    in[i] = b[i];
-  }
-  if (compressed)
-    hash160_avx2_1B(in, h);
-  else
-    hash160_avx2_2B(in, h);
+// Lane parallel message buffers for the SIMD hash160 kernels: word j of lane
+// l is at w[j * lanes + l], so the kernels load their vectors directly instead
+// of transposing.
+static inline void lane_words_x(uint32_t *w, int lanes, int l, const Int &x, uint32_t prefix) {
+  w[0 * lanes + l] = (x.bits[7] >> 8) | (prefix << 24);
+  w[1 * lanes + l] = (x.bits[6] >> 8) | (x.bits[7] << 24);
+  w[2 * lanes + l] = (x.bits[5] >> 8) | (x.bits[6] << 24);
+  w[3 * lanes + l] = (x.bits[4] >> 8) | (x.bits[5] << 24);
+  w[4 * lanes + l] = (x.bits[3] >> 8) | (x.bits[4] << 24);
+  w[5 * lanes + l] = (x.bits[2] >> 8) | (x.bits[3] << 24);
+  w[6 * lanes + l] = (x.bits[1] >> 8) | (x.bits[2] << 24);
+  w[7 * lanes + l] = (x.bits[0] >> 8) | (x.bits[1] << 24);
 }
 
-void Secp256K1::GetHash160_fromX_8(unsigned char prefix, Point *k, uint8_t *const h[8]) {
-  uint32_t b[8][16];
-  const uint32_t *in[8];
-  for (int i = 0; i < 8; i++) {
-    Int *x = &k[i].x;
-    KEYBUFFPREFIX(b[i], x, prefix);
-    in[i] = b[i];
+// Compressed key: 1 block, 33 bytes
+static inline void lane_words_comp(uint32_t *w, int lanes, int l, const Int &x, uint32_t prefix) {
+  lane_words_x(w, lanes, l, x, prefix);
+  w[8 * lanes + l] = 0x00800000 | (x.bits[0] << 24);
+  for (int j = 9; j < 15; j++) w[j * lanes + l] = 0;
+  w[15 * lanes + l] = 33 * 8;
+}
+
+// Uncompressed key: 2 blocks, 65 bytes
+static inline void lane_words_uncomp(uint32_t *w, int lanes, int l, const Point &p) {
+  lane_words_x(w, lanes, l, p.x, 0x04);
+  w[8 * lanes + l] = (p.y.bits[7] >> 8) | (p.x.bits[0] << 24);
+  w[9 * lanes + l] = (p.y.bits[6] >> 8) | (p.y.bits[7] << 24);
+  w[10 * lanes + l] = (p.y.bits[5] >> 8) | (p.y.bits[6] << 24);
+  w[11 * lanes + l] = (p.y.bits[4] >> 8) | (p.y.bits[5] << 24);
+  w[12 * lanes + l] = (p.y.bits[3] >> 8) | (p.y.bits[4] << 24);
+  w[13 * lanes + l] = (p.y.bits[2] >> 8) | (p.y.bits[3] << 24);
+  w[14 * lanes + l] = (p.y.bits[1] >> 8) | (p.y.bits[2] << 24);
+  w[15 * lanes + l] = (p.y.bits[0] >> 8) | (p.y.bits[1] << 24);
+  w[16 * lanes + l] = 0x00800000 | (p.y.bits[0] << 24);
+  for (int j = 17; j < 31; j++) w[j * lanes + l] = 0;
+  w[31 * lanes + l] = 65 * 8;
+}
+
+void Secp256K1::GetHash160_N(int lanes, bool compressed, Point *k, uint8_t *const *h) {
+  uint32_t w[32 * HASH160_AVX512_LANES];
+  if (compressed) {
+    for (int l = 0; l < lanes; l++)
+      lane_words_comp(w, lanes, l, k[l].x, 0x02 + k[l].y.IsOdd());
+    hash160_simd_1B(lanes, w, h);
+  } else {
+    for (int l = 0; l < lanes; l++)
+      lane_words_uncomp(w, lanes, l, k[l]);
+    hash160_simd_2B(lanes, w, h);
   }
-  hash160_avx2_1B(in, h);
+}
+
+void Secp256K1::GetHash160_fromX_N(int lanes, unsigned char prefix, Point *k, uint8_t *const *h) {
+  uint32_t w[16 * HASH160_AVX512_LANES];
+  for (int l = 0; l < lanes; l++)
+    lane_words_comp(w, lanes, l, k[l].x, prefix);
+  hash160_simd_1B(lanes, w, h);
 }
