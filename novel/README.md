@@ -279,6 +279,22 @@ the cluster to a person.
   half of the 2012 split that funded the 2017 top-up. The 2017 and 2023
   funders are the same wallet, holding coins since December 2012.
 
+**Outputs 161 to 256 (`trace_161_256.py`, `puzzle_161_256.json`).** The 2015
+funding transaction has 256 outputs worth n/1000 BTC for n = 1 to 256, in
+order. Outputs 1 to 160 are exactly the published puzzle addresses (160 of
+160 match the sheet). The other 96 are not in the sheet, and all 96 were
+spent together, with nothing else, in the 2017 top-up (`5d45587c`): the
+creator took back the coins of the unpublished 161 to 256 and spread them
+(plus 83.5 BTC from the 2012 funds) over 109 of the published puzzle
+addresses, which is why those carry the larger 2017 values. Consequences:
+all 96 compressed public keys are exposed on chain, every one signed
+exactly once (97 distinct `r`, low-R fraction 0.49, so no grinding), and
+the only later activity on any of them is third-party dust to the n = 256
+address in 2020 and 2026. The private keys are not published, they are
+unsolved, and their ranges (2^160 and up) are far beyond reach, so this is
+a map and not a lead: exposure of the public keys gives kangaroo nothing
+at 160 bits and up that it does not already have at 140.
+
 **Signature hygiene across the cluster.** 123 legacy signatures by 123
 distinct keys (25 uncompressed), no repeated `r`, low-R fraction 0.50 in
 2017 (no grinding) and 0.94 to 1.00 in 2021 to 2023 (Bitcoin Core 0.17 or
