@@ -89,17 +89,18 @@ against the known key; ops as a multiple of sqrt(W), several seeds each):
 
 A second run with 20 seeds per method at 45 bits (mean, standard
 deviation, standard error of the mean; every run recovered the key). The
-Gaudry-Schost rows were re-measured after a review fix (distinguished point
-matches with the opposite y are now solved as -P instead of discarded, and
-seeds are reproducible with `-s`); the earlier values were 1.84 and 2.23,
-within the standard errors of the new ones:
+Gaudry-Schost rows are from the final code after the review fixes
+(parity aware distinguished point matches, two sided restart wrap, exact
+operation counting, reproducible `-s` seeds); earlier measurements of the
+same rows read 1.84 then 1.51, and 2.23 then 2.45, all within the standard
+errors of the final values:
 
 | method | mean | sd | se |
 | --- | --- | --- | --- |
 | kangaroo, negation off | 2.34 | 1.18 | 0.26 |
 | kangaroo, negation on (`-e`) | 2.46 | 1.30 | 0.29 |
-| Gaudry-Schost, negation on (`-g`) | **1.51** | 0.77 | 0.17 |
-| Gaudry-Schost, negation off (`-g -n`) | 2.45 | 1.06 | 0.24 |
+| Gaudry-Schost, negation on (`-g`) | **1.70** | 0.83 | 0.19 |
+| Gaudry-Schost, negation off (`-g -n`) | 2.46 | 1.03 | 0.23 |
 
 Throughput on this 4 vCPU Xeon: 14 to 19 M group operations/s. For scale,
 keyhunt's BSGS on the same puzzle 50 took 494 s wall (table build included)
@@ -119,9 +120,9 @@ cannot grow past RAM, the kangaroo pays nothing up front.
    position. The sqrt(2) only exists when the search set is symmetric under
    negation, which is the next point.
 3. In Gaudry-Schost form (interval re-centred on zero, restarts at
-   distinguished points) the negation map pays: 1.51 against 2.45 without
-   it and against 2.34 for the plain kangaroo, close to the 1.36 that
-   Galbraith and Ruprai prove and a 1.55x saving over the plain kangaroo.
+   distinguished points) the negation map pays: 1.70 against 2.46 without
+   it and against 2.34 for the plain kangaroo, towards the 1.36 that
+   Galbraith and Ruprai prove and a 1.4x saving over the plain kangaroo.
    The remaining gap to theory is distinguished point overhead and the
    untuned set shapes; the GS set shapes of the paper (a tame set wider
    than the wild set) are the next tuning. The variance of a single search
@@ -140,7 +141,7 @@ to a distinguished point and restart with a cheap precomputed offset
 wrapped back into the set, so no scalar multiplication is needed per
 restart. Collisions in the overlap of the two sets give k'. Negation maps
 the sets onto themselves, so equivalence classes halve the effective set
-size. Status: implemented, verified on 40 to 50 bits, constant 1.51 over
+size. Status: implemented, verified on 40 to 50 bits, constant 1.70 over
 20 seeds at 45 bits: the best method in this directory so far.
 
 ### Candidates not started
