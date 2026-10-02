@@ -1848,5 +1848,264 @@
    "spent_evidence": 0
   },
   "exposed_on": []
+ },
+ "133": {
+  "puzzle": 133,
+  "address": "17uDfp5r4n441xkgLFmhNoSW1KWp6xVLD",
+  "solved": false,
+  "btc_pubkey_known": false,
+  "forms": {
+   "p2wpkh": "bc1qq98pte82dkjxpnrcxh3xyemt4gme3rj00y05fn",
+   "p2sh-p2wpkh": "3AT7qVouWMEQFnYEP1xUSN8EggmiMEjK3a",
+   "btg": "GHxpdo92pvPM8VG3cGut899LRB7MtWV7yB"
+  },
+  "btc_p2wpkh": {
+   "funded": 0,
+   "spent": 0,
+   "txs": 0
+  },
+  "btc_p2sh_p2wpkh": {
+   "funded": 0,
+   "spent": 0,
+   "txs": 0
+  },
+  "bch": {
+   "received": 133000000,
+   "sent": 0,
+   "txs": 2
+  },
+  "btg": {
+   "received": 133000000,
+   "sent": 0,
+   "txs": 2
+  },
+  "bsv": {
+   "txs": 2,
+   "unspent_funding": 2,
+   "spent_evidence": 0
+  },
+  "exposed_on": []
+ },
+ "134": {
+  "puzzle": 134,
+  "address": "13A3JrvXmvg5w9XGvyyR4JEJqiLz8ZySY3",
+  "solved": false,
+  "btc_pubkey_known": false,
+  "forms": {
+   "p2wpkh": "bc1qz7j7h7hk9eelzj0r8wn8fqmgq8cn4q9eq3fl9f",
+   "p2sh-p2wpkh": "3LEmu1hKDJuA34AbBjC8wsEeey2Uu8vMEb",
+   "btg": "GKzxizFUknHP1cpZrvdXV4aCkt8qDfR5FY"
+  },
+  "btc_p2wpkh": {
+   "funded": 0,
+   "spent": 0,
+   "txs": 0
+  },
+  "btc_p2sh_p2wpkh": {
+   "funded": 0,
+   "spent": 0,
+   "txs": 0
+  },
+  "bch": {
+   "received": 134000000,
+   "sent": 0,
+   "txs": 2
+  },
+  "btg": {
+   "received": 134000000,
+   "sent": 0,
+   "txs": 2
+  },
+  "bsv": {
+   "txs": 2,
+   "unspent_funding": 2,
+   "spent_evidence": 0
+  },
+  "exposed_on": []
+ },
+ "136": {
+  "puzzle": 136,
+  "address": "1UDHPdovvR985NrWSkdWQDEQ1xuRiTALq",
+  "solved": false,
+  "btc_pubkey_known": false,
+  "forms": {
+   "p2wpkh": "bc1qq5jhhe940mjrlsyhvt2a82ddffhp5qmyqywgfs",
+   "p2sh-p2wpkh": "35TKnmWmpJVjxkbfXHxfTcknmUSiJtNqor",
+   "btg": "GJK8hWxkun2SCYg9SPQjwAZ8KBkkPwnix8"
+  },
+  "btc_p2wpkh": {
+   "funded": 0,
+   "spent": 0,
+   "txs": 0
+  },
+  "btc_p2sh_p2wpkh": {
+   "funded": 0,
+   "spent": 0,
+   "txs": 0
+  },
+  "bch": {
+   "received": 136000000,
+   "sent": 0,
+   "txs": 2
+  },
+  "btg": {
+   "received": 136000000,
+   "sent": 0,
+   "txs": 2
+  },
+  "bsv": {
+   "txs": 2,
+   "unspent_funding": 2,
+   "spent_evidence": 0
+  },
+  "exposed_on": []
+ },
+ "137": {
+  "puzzle": 137,
+  "address": "15nf31J46iLuK1ZkTnqHo7WgN5cARFK3RA",
+  "solved": false,
+  "btc_pubkey_known": false,
+  "forms": {
+   "p2wpkh": "bc1qxjp03xrwz0qps6fq2wncgjquvw342nyunt3fy8",
+   "p2sh-p2wpkh": "32iP3zLBuMAGDVFHGY1HiLELCCM2hHVqbY",
+   "btg": "GNdaT8d15ZxCPUs3PjVQDsraHFQ1S5d8cf"
+  },
+  "btc_p2wpkh": {
+   "funded": 0,
+   "spent": 0,
+   "txs": 0
+  },
+  "btc_p2sh_p2wpkh": {
+   "funded": 0,
+   "spent": 0,
+   "txs": 0
+  },
+  "bch": {
+   "received": 137000000,
+   "sent": 0,
+   "txs": 2
+  },
+  "btg": {
+   "received": 137000000,
+   "sent": 0,
+   "txs": 2
+  },
+  "bsv": {
+   "txs": 2,
+   "unspent_funding": 2,
+   "spent_evidence": 0
+  },
+  "exposed_on": []
+ },
+ "138": {
+  "puzzle": 138,
+  "address": "1Ab4vzG6wEQBDNQM1B2bvUz4fqXXdFk2WT",
+  "solved": false,
+  "btc_pubkey_known": false,
+  "forms": {
+   "p2wpkh": "bc1qdy4gukpcvm7fq4h4ccdyt95lh8vx3gyvuef6l4",
+   "p2sh-p2wpkh": "3JJZE4PqKVLS8WWW1AjRrhnyXZ7RfRy334",
+   "btg": "GTRzM7b3v61UHqhdw7giMFKxb1KNexUVVy"
+  },
+  "btc_p2wpkh": {
+   "funded": 0,
+   "spent": 0,
+   "txs": 0
+  },
+  "btc_p2sh_p2wpkh": {
+   "funded": 0,
+   "spent": 0,
+   "txs": 0
+  },
+  "bch": {
+   "received": 138000000,
+   "sent": 0,
+   "txs": 2
+  },
+  "btg": {
+   "received": 138000000,
+   "sent": 0,
+   "txs": 2
+  },
+  "bsv": {
+   "txs": 2,
+   "unspent_funding": 2,
+   "spent_evidence": 0
+  },
+  "exposed_on": []
+ },
+ "139": {
+  "puzzle": 139,
+  "address": "1Fz63c775VV9fNyj25d9Xfw3YHE6sKCxbt",
+  "solved": false,
+  "btc_pubkey_known": false,
+  "forms": {
+   "p2wpkh": "bc1q53w6a8x46077y8j64x54xe73qun8kwu2hagqts",
+   "p2sh-p2wpkh": "3EmmyQunL8QLt7LJFSwSb5ze59LajMNeip",
+   "btg": "GYq1TjS44M6SjrH1x2HFxSGwTT1wrnqq91"
+  },
+  "btc_p2wpkh": {
+   "funded": 0,
+   "spent": 0,
+   "txs": 0
+  },
+  "btc_p2sh_p2wpkh": {
+   "funded": 0,
+   "spent": 0,
+   "txs": 0
+  },
+  "bch": {
+   "received": 139000000,
+   "sent": 0,
+   "txs": 2
+  },
+  "btg": {
+   "received": 139000000,
+   "sent": 0,
+   "txs": 2
+  },
+  "bsv": {
+   "txs": 2,
+   "unspent_funding": 2,
+   "spent_evidence": 0
+  },
+  "exposed_on": []
+ },
+ "140": {
+  "puzzle": 140,
+  "address": "1QKBaU6WAeycb3DbKbLBkX7vJiaS8r42Xo",
+  "solved": false,
+  "btc_pubkey_known": true,
+  "forms": {
+   "p2wpkh": "bc1ql7antfamnwlpdsd2y5600lc36kwgu0g6r0jaqd",
+   "p2sh-p2wpkh": "35GH5JUxJ1J93AJVwZvgcQT5Rt7BKRDJi4",
+   "btg": "GhA6zbRT9WaufWWtFXzJBHTpDtNH8v7uXS"
+  },
+  "btc_p2wpkh": {
+   "funded": 0,
+   "spent": 0,
+   "txs": 0
+  },
+  "btc_p2sh_p2wpkh": {
+   "funded": 0,
+   "spent": 0,
+   "txs": 0
+  },
+  "bch": {
+   "received": 140000000,
+   "sent": 0,
+   "txs": 2
+  },
+  "btg": {
+   "received": 140000000,
+   "sent": 0,
+   "txs": 2
+  },
+  "bsv": {
+   "txs": 2,
+   "unspent_funding": 2,
+   "spent_evidence": 0
+  },
+  "exposed_on": []
  }
 }
