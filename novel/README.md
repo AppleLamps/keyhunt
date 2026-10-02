@@ -363,6 +363,47 @@ sentence suggests: a real deterministic wallet (old Electrum, Armory,
 BIP32) whose seed is a random 128 bit or larger value, which no enumeration
 can reach, and unusual stream constructions. Puzzle 71 is unchanged.
 
+### 8. Public key side channels (`sidechannel.py`)
+
+**Why this is a different kind of attempt.** Ideas 3, 4 and 7 guess how the
+keys were generated, which is what everyone else has tried and which only
+works if the creator was careless. This one does not touch key generation.
+For a hash-only puzzle (71 and all the others whose public key is hidden)
+the cost is about 2^69 hash evaluations, but the same range is a 2^36
+kangaroo problem the moment the public key is known, and a public key is
+revealed by any signature made with the key, on any chain and in any
+address form of that key. Several such channels are computable from the
+puzzle address alone:
+
+- the P2WPKH (`bc1q...`) and P2SH-P2WPKH (`3...`) addresses of the same
+  compressed key use the same hash160, so they can be looked up without
+  knowing the key;
+- every pre-fork UTXO of a puzzle address also exists on Bitcoin Cash (Aug
+  2017), Bitcoin Gold (Oct 2017) and Bitcoin SV (Nov 2018), where the same
+  key signs, so a spend there exposes the key although the bitcoin side is
+  untouched.
+
+**What was done.** For all 77 unsolved puzzles from 66 to 160 (72 with a
+hidden key, 5 with a known one), `sidechannel.py` asks blockstream (both
+segwit forms), bchblockexplorer (Bitcoin Cash), btgexplorer (Bitcoin Gold,
+address version 38) and WhatsOnChain (Bitcoin SV) whether any output of the
+address has ever been spent. The address encoders are checked against known
+vectors and the detector is validated on puzzles 1 to 6, which are swept on
+every one of those chains and forms. Not covered: eCash (its index only
+speaks protobuf) and the uncompressed-key forms, which cannot be derived
+without the key.
+
+**Result: negative.** No unsolved puzzle has a single spent output on any
+other chain or address form; there were no provider errors. The channel is
+not unknown to others: 558 satoshis were sent to the segwit form of
+puzzle 71's key in June 2025 (`bc1q7m65x8f9...`, unspent), the only such
+funding among the 72 hash-only puzzles. The unspent fork coins also show
+what a solver would collect: puzzle 71's key holds 0.71 BCH, 0.71 BTG and
+0.71 BSV beside its 7.1 BTC. The sweep is cheap to repeat (about 30 minutes,
+dominated by rate limits) and any new spend anywhere would hand over a
+public key, so it doubles as a standing watch: rerun `./sidechannel.py 66
+160 unsolved` and look for a line marked `!!!`.
+
 ### Candidates not started
 
 - Nonce forensics on the solvers' signatures (the 2025 spends from 130 and
@@ -394,6 +435,7 @@ python3 novel/nonce_fetch.py        # needs network and openpyxl; refreshes nove
 python3 novel/nonce_forensics.py    # offline, part of make test
 python3 novel/trace_owner.py        # needs network and openpyxl; writes novel/owner_cluster.json
 make walletfit && ./walletfit 4     # deterministic wallet seed search (about 25 minutes on 4 cores)
+python3 novel/sidechannel.py 66 160 unsolved   # public key side channel watch; needs network and openpyxl
 ./kangaroo -p <public key hex> -r <start hex>:<end hex> [-t threads] [-k kangaroos per thread] [-d dp bits] [-n] [-s seed] [-q]
 ```
 
