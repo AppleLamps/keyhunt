@@ -37,8 +37,9 @@ else
   endif
 endif
 ifdef X86
-  # SSSE3 is the baseline of the 4-way SSE hash kernels
-  OPTFLAGS += -mssse3
+  # SSSE3 is the baseline of the 4-way SSE hash kernels. Only the main/bsgsd
+  # objects get it: the legacy build is meant for CPUs without that baseline.
+  SIMDFLAGS := -mssse3
 endif
 ifdef LTO
   OPTFLAGS += -flto
@@ -50,6 +51,8 @@ endif
 WARN     := -Wall -Wextra
 CFLAGS   := $(OPTFLAGS) $(WARN) -Wno-unused-parameter -MMD -MP
 CXXFLAGS := $(OPTFLAGS) $(WARN) -Wno-deprecated-copy -std=gnu++17 -MMD -MP
+MAIN_CFLAGS   := $(CFLAGS) $(SIMDFLAGS)
+MAIN_CXXFLAGS := $(CXXFLAGS) $(SIMDFLAGS)
 LDLIBS   := -lm -lpthread
 
 ifeq ($(V),1)
@@ -78,51 +81,69 @@ LEGACY_CXXC := util.c sha3/sha3.c sha3/keccak.c hashing.c
 LEGACY_OBJS := $(addprefix $(BUILD)/legacy/,base58/base58.o xxhash/xxhash.o \
                $(LEGACY_SRCS:.cpp=.o) $(LEGACY_CXXC:.c=.o))
 
-.PHONY: default all clean legacy bsgsd test
+# Make only compares timestamps, so record the compiler and flags in a stamp
+# file that every object depends on; changing ARCH/LTO/DEBUG/SANITIZE/... then
+# rebuilds instead of silently reusing incompatible objects.
+STAMP := $(BUILD)/.config
+CONFIG := $(CC) $(CXX) $(MAIN_CFLAGS) $(MAIN_CXXFLAGS) $(LDLIBS)
+$(shell mkdir -p $(BUILD); echo '$(CONFIG)' | cmp -s - $(STAMP) || echo '$(CONFIG)' > $(STAMP))
+
+.PHONY: default all clean legacy bsgsd keyhunt test
 default: all
 all: keyhunt
 
-keyhunt: $(BUILD)/keyhunt.o $(COMMON_OBJS)
-	@echo "  LD    $@"
-	$(Q)$(CXX) $(CXXFLAGS) -o $@ $^ $(LDLIBS)
+# The variants are linked under build/ and copied to the top level, so building
+# one after the other always refreshes ./keyhunt (it is the same output name).
+keyhunt: $(BUILD)/keyhunt.bin
+	@cp -f $< $@
 
-bsgsd: $(BUILD)/bsgsd.o $(COMMON_OBJS)
-	@echo "  LD    $@"
-	$(Q)$(CXX) $(CXXFLAGS) -o $@ $^ $(LDLIBS)
+bsgsd: $(BUILD)/bsgsd.bin
+	@cp -f $< $@
 
-legacy: $(BUILD)/legacy/keyhunt_legacy.o $(LEGACY_OBJS)
+legacy: $(BUILD)/keyhunt-legacy.bin
+	@cp -f $< keyhunt
+
+$(BUILD)/keyhunt.bin: $(BUILD)/keyhunt.o $(COMMON_OBJS)
+	@echo "  LD    keyhunt"
+	$(Q)$(CXX) $(MAIN_CXXFLAGS) -o $@ $^ $(LDLIBS)
+
+$(BUILD)/bsgsd.bin: $(BUILD)/bsgsd.o $(COMMON_OBJS)
+	@echo "  LD    bsgsd"
+	$(Q)$(CXX) $(MAIN_CXXFLAGS) -o $@ $^ $(LDLIBS)
+
+$(BUILD)/keyhunt-legacy.bin: $(BUILD)/legacy/keyhunt_legacy.o $(LEGACY_OBJS)
 	@echo "  LD    keyhunt (legacy)"
-	$(Q)$(CXX) $(CXXFLAGS) -o keyhunt $^ $(LDLIBS) -lcrypto -lgmp
+	$(Q)$(CXX) $(CXXFLAGS) -o $@ $^ $(LDLIBS) -lcrypto -lgmp
 
 # ---- compile rules ----------------------------------------------------------
 
-$(BUILD)/%.o: %.cpp
+$(BUILD)/%.o: %.cpp $(STAMP)
 	@mkdir -p $(dir $@)
 	@echo "  CXX   $<"
-	$(Q)$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(Q)$(CXX) $(MAIN_CXXFLAGS) -c $< -o $@
 
-$(addprefix $(BUILD)/,$(CXXC_SRCS:.c=.o)): $(BUILD)/%.o: %.c
+$(addprefix $(BUILD)/,$(CXXC_SRCS:.c=.o)): $(BUILD)/%.o: %.c $(STAMP)
 	@mkdir -p $(dir $@)
 	@echo "  CXX   $<"
-	$(Q)$(CXX) $(CXXFLAGS) -x c++ -c $< -o $@
+	$(Q)$(CXX) $(MAIN_CXXFLAGS) -x c++ -c $< -o $@
 
-$(addprefix $(BUILD)/,$(C_SRCS:.c=.o)): $(BUILD)/%.o: %.c
+$(addprefix $(BUILD)/,$(C_SRCS:.c=.o)): $(BUILD)/%.o: %.c $(STAMP)
 	@mkdir -p $(dir $@)
 	@echo "  CC    $<"
-	$(Q)$(CC) $(CFLAGS) -c $< -o $@
+	$(Q)$(CC) $(MAIN_CFLAGS) -c $< -o $@
 
-# Legacy objects (separate directory: same file names, different flags/sources)
-$(BUILD)/legacy/%.o: %.cpp
+# Legacy objects (separate directory: same file names, different flags/sources, no SSSE3)
+$(BUILD)/legacy/%.o: %.cpp $(STAMP)
 	@mkdir -p $(dir $@)
 	@echo "  CXX   $<"
 	$(Q)$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(addprefix $(BUILD)/legacy/,$(LEGACY_CXXC:.c=.o)): $(BUILD)/legacy/%.o: %.c
+$(addprefix $(BUILD)/legacy/,$(LEGACY_CXXC:.c=.o)): $(BUILD)/legacy/%.o: %.c $(STAMP)
 	@mkdir -p $(dir $@)
 	@echo "  CXX   $<"
 	$(Q)$(CXX) $(CXXFLAGS) -x c++ -c $< -o $@
 
-$(BUILD)/legacy/base58/base58.o $(BUILD)/legacy/xxhash/xxhash.o: $(BUILD)/legacy/%.o: %.c
+$(BUILD)/legacy/base58/base58.o $(BUILD)/legacy/xxhash/xxhash.o: $(BUILD)/legacy/%.o: %.c $(STAMP)
 	@mkdir -p $(dir $@)
 	@echo "  CC    $<"
 	$(Q)$(CC) $(CFLAGS) -Wno-unused-result -c $< -o $@
@@ -136,7 +157,7 @@ TEST_HASH_OBJS := $(addprefix $(BUILD)/hash/,hash160_avx2.o sha256.o ripemd160.o
 
 $(BUILD)/test_hash160: $(BUILD)/tests/test_hash160.o $(TEST_HASH_OBJS)
 	@echo "  LD    $@"
-	$(Q)$(CXX) $(CXXFLAGS) -o $@ $^ $(LDLIBS)
+	$(Q)$(CXX) $(MAIN_CXXFLAGS) -o $@ $^ $(LDLIBS)
 
 test: keyhunt $(TEST_BINS)
 	@$(BUILD)/test_hash160
