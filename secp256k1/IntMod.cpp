@@ -107,6 +107,10 @@ void Int::ModNeg() {
 
 // ------------------------------------------------
 
+static inline int64_t addw(int64_t a, int64_t b) { return (int64_t)((uint64_t)a + (uint64_t)b); }
+static inline int64_t subw(int64_t a, int64_t b) { return (int64_t)((uint64_t)a - (uint64_t)b); }
+static inline int64_t shl1(int64_t a) { return (int64_t)((uint64_t)a << 1); }
+
 void Int::ModInv() {
 
   // Compute modular inverse of this mop _P
@@ -381,8 +385,10 @@ void Int::ModInv() {
 
   // Delayed right shift 62bits
 
-  #define SWAP_ADD(x,y) x+=y;y-=x;
-  #define SWAP_SUB(x,y) x-=y;y+=x;
+  // The 62 bit divsteps wrap in the low 64 bits (u0, v0) by design: do it on
+  // unsigned values so the wraparound is defined behaviour
+  #define SWAP_ADD(x,y) x=addw(x,y);y=subw(y,x);
+  #define SWAP_SUB(x,y) x=subw(x,y);y=addw(y,x);
   #define IS_EVEN(x) ((x&1)==0)
 
   Int r0_P;
@@ -422,15 +428,15 @@ void Int::ModInv() {
 
         bitCount++;
         u0 >>= 1;
-        vu <<= 1;
-        vv <<= 1;
+        vu = shl1(vu);
+        vv = shl1(vv);
 
       }
 
       if (bitCount == 62)
         break;
 
-      nb0 = (v0 + u0) & 0x3;
+      nb0 = addw(v0, u0) & 0x3;
       if (nb0 == 0) {
         SWAP_ADD(uv, vv);
         SWAP_ADD(uu, vu);
@@ -689,14 +695,14 @@ void Int::SetupField(Int *n, Int *R, Int *R2, Int *R3, Int *R4) {
 
   // Last digit inversions (Newton's iteration)
   {
-    int64_t x, t;
-    x = t = (int64_t)n->bits64[0];
+    uint64_t x, t;   // unsigned: the arithmetic is mod 2^64
+    x = t = n->bits64[0];
     x = x * (2 - t * x);
     x = x * (2 - t * x);
     x = x * (2 - t * x);
     x = x * (2 - t * x);
     x = x * (2 - t * x);
-    MM64 = (uint64_t)(-x);
+    MM64 = -x;
     MM32 = (uint32_t)MM64;
   }
   _P.Set(n);

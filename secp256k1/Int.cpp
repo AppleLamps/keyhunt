@@ -295,21 +295,23 @@ unsigned char Int::GetByte(int n) {
 void Int::Set32Bytes(unsigned char *bytes) {
 
   CLEAR();
-  uint64_t *ptr = (uint64_t *)bytes;
-  bits64[3] = _byteswap_uint64(ptr[0]);
-  bits64[2] = _byteswap_uint64(ptr[1]);
-  bits64[1] = _byteswap_uint64(ptr[2]);
-  bits64[0] = _byteswap_uint64(ptr[3]);
+  uint64_t w[4];
+  memcpy(w, bytes, 32);   // unaligned safe
+  bits64[3] = _byteswap_uint64(w[0]);
+  bits64[2] = _byteswap_uint64(w[1]);
+  bits64[1] = _byteswap_uint64(w[2]);
+  bits64[0] = _byteswap_uint64(w[3]);
 
 }
 
 void Int::Get32Bytes(unsigned char *buff) {
 
-  uint64_t *ptr = (uint64_t *)buff;
-  ptr[3] = _byteswap_uint64(bits64[0]);
-  ptr[2] = _byteswap_uint64(bits64[1]);
-  ptr[1] = _byteswap_uint64(bits64[2]);
-  ptr[0] = _byteswap_uint64(bits64[3]);
+  uint64_t w[4];
+  w[3] = _byteswap_uint64(bits64[0]);
+  w[2] = _byteswap_uint64(bits64[1]);
+  w[1] = _byteswap_uint64(bits64[2]);
+  w[0] = _byteswap_uint64(bits64[3]);
+  memcpy(buff, w, 32);   // unaligned safe
 
 }
 
@@ -831,7 +833,7 @@ void Int::Div(Int *a,Int *mod) {
     if (!skipCorrection) {
 
       // Correct qhat
-      uint64_t nl = (uint64_t)rem.bits[sb-j-1];
+      uint64_t nl = (sb-j-1 >= 0) ? (uint64_t)rem.bits[sb-j-1] : 0;   // single word divisor: no lower word
       uint64_t rs = ((uint64_t)qrem << 32) | nl;
       uint64_t estProduct = (uint64_t)_dl * (uint64_t)(qhat);
 

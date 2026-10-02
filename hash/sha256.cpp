@@ -25,6 +25,26 @@
 
 #define BSWAP
 
+#ifndef WIN64
+#ifndef _byteswap_ulong
+#define _byteswap_ulong __builtin_bswap32
+#endif
+#ifndef _byteswap_uint64
+#define _byteswap_uint64 __builtin_bswap64
+#endif
+#endif
+
+// Unaligned safe (memcpy) big endian access; compilers turn these into a single mov + bswap
+#ifdef BSWAP
+static inline void WRITEBE32(unsigned char *ptr, uint32_t x) { x = _byteswap_ulong(x); memcpy(ptr, &x, 4); }
+static inline void WRITEBE64(unsigned char *ptr, uint64_t x) { x = _byteswap_uint64(x); memcpy(ptr, &x, 8); }
+static inline uint32_t READBE32(const unsigned char *ptr) { uint32_t x; memcpy(&x, ptr, 4); return _byteswap_ulong(x); }
+#else
+static inline void WRITEBE32(unsigned char *ptr, uint32_t x) { memcpy(ptr, &x, 4); }
+static inline void WRITEBE64(unsigned char *ptr, uint64_t x) { memcpy(ptr, &x, 8); }
+static inline uint32_t READBE32(const unsigned char *ptr) { uint32_t x; memcpy(&x, ptr, 4); return x; }
+#endif
+
 /// Internal SHA-256 implementation.
 namespace _sha256
 {
@@ -32,8 +52,6 @@ namespace _sha256
   static const unsigned char pad[64] = { 0x80 };
 
 #ifndef WIN64
-#define _byteswap_ulong __builtin_bswap32
-#define _byteswap_uint64 __builtin_bswap64
 inline uint32_t _rotr(uint32_t x, uint8_t r) {
   asm("rorl %1,%0" : "+r" (x) : "c" (r));
   return x;
@@ -60,15 +78,6 @@ inline uint32_t _rotr(uint32_t x, uint8_t r) {
     d += t1; \
     h = t1 + t2;
 
-#ifdef BSWAP
-#define WRITEBE32(ptr,x) *((uint32_t *)(ptr)) = _byteswap_ulong(x)
-#define WRITEBE64(ptr,x) *((uint64_t *)(ptr)) = _byteswap_uint64(x)
-#define READBE32(ptr) (uint32_t)_byteswap_ulong(*(uint32_t *)(ptr))
-#else
-#define WRITEBE32(ptr,x) *(ptr) = x
-#define WRITEBE64(ptr,x) *(ptr) = x
-#define READBE32(ptr) *(uint32_t *)(ptr)
-#endif
 
   // Initialise state
   void Initialize(uint32_t *s) {
