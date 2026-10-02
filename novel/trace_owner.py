@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Trace the puzzle creator's wallet on chain: every transaction that FUNDED a
-puzzle address, the inputs of those transactions (walked backwards while the
-chain stays narrow), and the outputs of the creator's own spends (walked
-forwards).  Prints a cluster of creator-controlled addresses with their
-public-key exposure, so the novel/ hypotheses can be tested on them too."""
-import json, sys, time, urllib.request, openpyxl
-from collections import defaultdict
-API = "https://blockstream.info/api"
-cache = {}
+"""Focused on-chain trace of the puzzle creator: the transactions that
+provably came from the creator (2015 funding, 2017 top-up, 2019 dust priming
+and consolidation, 2021 top-up, 2023 prize increase), walked backwards
+through their inputs (stopping at wide fan-ins, which look like services)
+and forwards through their non-puzzle outputs.  Reports the resulting
+address cluster with public-key exposure (novel/owner_cluster.json)."""
+import json, sys, time, urllib.request, openpyxl, datetime
+from collections import defaultdict, deque
+API = "https://blockstream.info/api"; cache = {}
 def get(path):
     if path in cache: return cache[path]
     for a in range(5):
@@ -15,92 +15,86 @@ def get(path):
             with urllib.request.urlopen(API + path, timeout=30) as r: d = r.read().decode(); cache[path] = d; return d
         except Exception: time.sleep(2 * (a + 1))
     raise SystemExit("fetch failed " + path)
-def txs_of(addr):
-    out, last = [], None
-    while True:
-        page = json.loads(get(f"/address/{addr}/txs" + (f"/chain/{last}" if last else "")))
-        if not page: break
-        out += page; last = page[-1]["txid"]
-        if len(page) < 25: break
-    return out
 def tx(txid): return json.loads(get(f"/tx/{txid}"))
-def when(t): import datetime; return datetime.datetime.utcfromtimestamp(t["status"]["block_time"]).strftime("%Y-%m-%d") if t.get("status", {}).get("block_time") else "mempool"
-
+def outspends(txid): return json.loads(get(f"/tx/{txid}/outspends"))
+def when(t): return datetime.datetime.utcfromtimestamp(t["status"]["block_time"]).strftime("%Y-%m-%d") if t.get("status", {}).get("block_time") else "mempool"
 wb = openpyxl.load_workbook("puzzle-all.xlsx", read_only=True); ws = wb["puzzle-all"]
-puzzle = {}
-for row in ws.iter_rows(min_row=2, values_only=True):
-    if isinstance(row[0], int) and row[0] not in puzzle: puzzle[row[3]] = row[0]
-paddrs = set(puzzle)
+paddrs = {row[3] for row in ws.iter_rows(min_row=2, values_only=True) if isinstance(row[0], int)}
 
-# 1. funding transactions: any tx with an output to a puzzle address whose inputs are NOT puzzle addresses
-# sample several puzzle addresses across the range to find all distinct funding txs
-funding = {}
-for a in [k for k, v in puzzle.items() if v in (71, 100, 140, 160, 159)]:
-    for t in txs_of(a):
-        outs = [o for o in t["vout"] if o.get("scriptpubkey_address") in paddrs]
-        if outs and t["txid"] not in funding: funding[t["txid"]] = t
-print("[+] transactions paying INTO puzzle addresses (found via 9 sample addresses):")
-for txid, t in sorted(funding.items(), key=lambda kv: kv[1]["status"].get("block_height", 0)):
-    ins = [v.get("prevout", {}).get("scriptpubkey_address") for v in t["vin"]]
-    n_puz_out = sum(1 for o in t["vout"] if o.get("scriptpubkey_address") in paddrs)
-    tot = sum(o["value"] for o in t["vout"] if o.get("scriptpubkey_address") in paddrs) / 1e8
-    kind = "creator" if not any(i in paddrs for i in ins) else "puzzle-internal"
-    print(f"    {when(t)} {txid} {kind}: {len(t['vin'])} in, {len(t['vout'])} out, {n_puz_out} puzzle outputs, {tot:.4f} BTC to puzzles; inputs from {sorted(set(ins))[:4]}")
+CREATOR_TXS = {
+ "08389f34c98c606322740c0be6a7125d9860bb8d5cb182c02f98461e5fa6cd15": "2015 funding (256 outputs)",
+ "5d45587cfd1d5b0fb826805541da7d94c61fe432259e68ee26f4a04544384164": "2017 top-up (97 inputs, 109 outputs)",
+ "7c432398c7631600af01695c9767eff109cbfae4f7ecccaff388043a474d4f1e": "2019 dust priming of the 21 pubkey addresses",
+ "17e4e323cfbc68d7f0071cad09364e8193eedf8fefbcbd8a21b4b65717a4b3d3": "2019 consolidation (signatures from 65..160)",
+ "e1f668b8cc9915fcd3de6ec922acf98cdf4c14f75de9530b6ad750693d44076b": "2021 top-up (11 outputs)",
+ "12f34b58b04dfb0233ce889f674781c0e0c7ba95482cca469125af41a78d13b3": "2023 prize increase (872 BTC, 85 outputs)",
+}
+roles = defaultdict(set)
+def note(addr, role):
+    if addr and addr not in paddrs: roles[addr].add(role)
 
-# 2. walk backwards from the creator funding inputs
-def walk_back(txid, depth, seen, chain):
-    if depth == 0 or txid in seen: return
-    seen.add(txid); t = tx(txid)
-    ins = [(v["prevout"]["scriptpubkey_address"], v["txid"], v["prevout"]["value"], v.get("scriptsig", "")) for v in t["vin"] if v.get("prevout")]
-    chain.append((depth, txid, when(t), len(ins), len(t["vout"]), ins))
-    if len(ins) > 6:   # a wide fan-in looks like an exchange/service hot wallet: stop
-        return
-    for _, ptx, _, _ in ins: walk_back(ptx, depth - 1, seen, chain)
-
-print("\n[+] backwards from the creator's funding transactions (stop at >6 inputs):")
-creator_addrs = defaultdict(set)   # addr -> set of roles
-for txid, t in funding.items():
-    ins = [v.get("prevout", {}).get("scriptpubkey_address") for v in t["vin"]]
-    if any(i in paddrs for i in ins): continue
-    chain = []; walk_back(txid, 6, set(), chain)
-    for depth, tid, date, nin, nout, ins in chain:
-        print(f"    {'  ' * (6 - depth)}{date} {tid[:16]} {nin} in / {nout} out  <- {[i[0][:12] + '..' for i in ins][:5]}")
-        for a, _, _, ss in ins:
-            creator_addrs[a].add("funding-input" if depth == 6 else f"funding-ancestor-{6-depth}")
-
-# 3. forwards from the creator's own spends out of puzzle addresses (the 2019 consolidation and any 2017 moves)
-print("\n[+] forwards from creator spends (inputs from puzzle addresses, outputs not to puzzle addresses):")
-sigs = json.load(open("novel/nonce_sigs.json"))
-creator_tx_ids = set()
-for o in sigs:
-    if o["block_height"] and o["block_height"] < 600000: creator_tx_ids.add(o["txid"])   # before 2019-10: creator era (solved low puzzles were swept by others too, so filter below)
-for tid in sorted(creator_tx_ids):
-    t = tx(tid)
-    ins = [v["prevout"]["scriptpubkey_address"] for v in t["vin"]]
-    if sum(1 for i in ins if i in paddrs) < 3: continue   # creator moves bundle many puzzle inputs; solvers sweep one
+print("[+] the creator transactions, their inputs and non-puzzle outputs")
+for txid, label in CREATOR_TXS.items():
+    t = tx(txid)
+    ins = [(v["prevout"]["scriptpubkey_address"], v["prevout"]["value"] / 1e8) for v in t["vin"] if v.get("prevout")]
     outs = [(o.get("scriptpubkey_address"), o["value"] / 1e8) for o in t["vout"]]
-    print(f"    {when(t)} {tid}: {len(ins)} inputs ({sorted(puzzle[i] for i in ins if i in paddrs)}) -> {outs}")
-    for a, v in outs:
-        if a and a not in paddrs:
-            creator_addrs[a].add("spend-output")
-            for t2 in txs_of(a):
-                if any(vi.get("prevout", {}).get("scriptpubkey_address") == a for vi in t2["vin"]):
-                    o2 = [(o.get("scriptpubkey_address"), o["value"] / 1e8) for o in t2["vout"]]
-                    print(f"        {when(t2)} {a} spent in {t2['txid'][:16]} ({len(t2['vin'])} in) -> {o2[:4]}")
-                    for a2, _ in o2:
-                        if a2 and a2 not in paddrs: creator_addrs[a2].add("spend-output-hop2")
+    nonp = [(a, v) for a, v in outs if a not in paddrs]
+    print(f"  {when(t)} {label}\n     {txid}\n     inputs: {len(ins)} from {len(set(a for a, _ in ins))} addresses, total {sum(v for _, v in ins):.4f} BTC; first: {ins[:3]}")
+    print(f"     outputs: {len(outs)}, non-puzzle: {nonp}")
+    for a, _ in ins: note(a, f"input of {label}")
+    for a, _ in nonp: note(a, f"change/output of {label}")
 
-# 4. cluster summary with pubkey exposure
-print("\n[+] creator-linked addresses (outside the puzzle set):")
-for a, roles in sorted(creator_addrs.items(), key=lambda kv: sorted(kv[1])):
-    info = json.loads(get(f"/address/{a}"))
-    cs = info["chain_stats"]; spent = cs["spent_txo_count"] > 0
+print("\n[+] backwards from each creator transaction (depth 8, stop at >8 inputs = service-like fan-in)")
+for txid, label in CREATOR_TXS.items():
+    print(f"  {label}")
+    q = deque([(txid, 0)]); seen = set()
+    while q:
+        tid, d = q.popleft()
+        if tid in seen or d > 8: continue
+        seen.add(tid); t = tx(tid)
+        ins = [(v["prevout"]["scriptpubkey_address"], v["txid"], v["prevout"]["value"] / 1e8) for v in t["vin"] if v.get("prevout")]
+        if d: print(f"  {'  ' * d}{when(t)} {tid[:16]} {len(ins)} in / {len(t['vout'])} out, {sum(v for *_, v in ins):.4f} BTC from {sorted(set(a for a, *_ in ins))[:3]}")
+        if len(ins) > 8:
+            print(f"  {'  ' * d}  (wide fan-in, stop: likely an exchange or service)"); continue
+        for a, ptx, _ in ins:
+            if d: note(a, f"ancestor-{d} of {label}")
+            q.append((ptx, d + 1))
+
+print("\n[+] forwards from non-puzzle outputs of creator transactions (depth 4)")
+for txid, label in CREATOR_TXS.items():
+    t = tx(txid); sp = outspends(txid)
+    for i, (o, s) in enumerate(zip(t["vout"], sp)):
+        a = o.get("scriptpubkey_address")
+        if a in paddrs or not s.get("spent"): continue
+        print(f"  {label}, output {i} ({a}, {o['value']/1e8:.4f} BTC):")
+        q = deque([(s["txid"], 1)]); seen = set()
+        while q:
+            tid, d = q.popleft()
+            if tid in seen or d > 4: continue
+            seen.add(tid); t2 = tx(tid); sp2 = outspends(tid)
+            outs = [(x.get("scriptpubkey_address"), x["value"] / 1e8) for x in t2["vout"]]
+            print(f"  {'  ' * d}{when(t2)} {tid[:16]} ({len(t2['vin'])} in / {len(outs)} out) -> {outs[:4]}")
+            if len(t2["vin"]) > 8 or len(outs) > 8: print(f"  {'  ' * d}  (wide, stop)"); continue
+            for (a2, _), s2 in zip(outs, sp2):
+                note(a2, f"descendant-{d} of {label}")
+                if s2.get("spent"): q.append((s2["txid"], d + 1))
+
+print("\n[+] cluster summary")
+rows = []
+for a, rs in roles.items():
+    info = json.loads(get(f"/address/{a}")); cs = info["chain_stats"]
     pub = None
-    if spent:
-        for t in txs_of(a):
+    if cs["spent_txo_count"]:
+        for t in json.loads(get(f"/address/{a}/txs")):
             for v in t["vin"]:
-                if v.get("prevout", {}).get("scriptpubkey_address") == a and v.get("scriptsig"):
-                    ss = bytes.fromhex(v["scriptsig"]); l = ss[0]; pub = ss[l + 2:l + 2 + ss[l + 1]].hex(); break
+                if v.get("prevout", {}).get("scriptpubkey_address") == a:
+                    if v.get("scriptsig"):
+                        ss = bytes.fromhex(v["scriptsig"]); l = ss[0]; pub = ss[l + 2:l + 2 + ss[l + 1]].hex()
+                    elif v.get("witness"): pub = v["witness"][-1]
+                    break
             if pub: break
-    print(f"    {a:36s} {sorted(roles)} funded {cs['funded_txo_count']} spent {cs['spent_txo_count']} balance {(cs['funded_txo_sum']-cs['spent_txo_sum'])/1e8:.8f} pubkey {'exposed ' + pub[:10] + '..' if pub else 'not exposed'}")
-json.dump({a: sorted(r) for a, r in creator_addrs.items()}, open("novel/owner_cluster.json", "w"), indent=1)
+    rows.append((a, sorted(rs), cs["funded_txo_count"], cs["spent_txo_count"], (cs["funded_txo_sum"] - cs["spent_txo_sum"]) / 1e8, pub))
+rows.sort(key=lambda r: r[1])
+for a, rs, f, s, bal, pub in rows:
+    print(f"  {a:44s} funded {f:3d} spent {s:3d} balance {bal:12.8f}  pubkey {('exposed ' + pub[:12] + '..') if pub else 'not exposed'}\n      roles: {rs[:3]}{' ...' if len(rs) > 3 else ''}")
+json.dump([{"address": a, "roles": rs, "funded": f, "spent": s, "balance": bal, "pubkey": pub} for a, rs, f, s, bal, pub in rows], open("novel/owner_cluster.json", "w"), indent=1)
