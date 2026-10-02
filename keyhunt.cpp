@@ -2542,20 +2542,25 @@ void *thread_process(void *vargp)	{
 			key_mpz.Rand(&n_range_start,&n_range_end);
 		}
 		else	{
-			if(n_range_start.IsLower(&n_range_end))	{
+			/* The range check and the hand out of the next block must be one atomic step,
+			   otherwise two threads can both pass the check and the second one scans past the end of the range */
+			bool got_block = false;
 #if defined(_WIN64) && !defined(__CYGWIN__)
-				WaitForSingleObject(write_random, INFINITE);
-				key_mpz.Set(&n_range_start);
-				n_range_start.Add(N_SEQUENTIAL_MAX);
-				ReleaseMutex(write_random);
+			WaitForSingleObject(write_random, INFINITE);
 #else
-				pthread_mutex_lock(&write_random);
+			pthread_mutex_lock(&write_random);
+#endif
+			if(n_range_start.IsLower(&n_range_end))	{
 				key_mpz.Set(&n_range_start);
 				n_range_start.Add(N_SEQUENTIAL_MAX);
-				pthread_mutex_unlock(&write_random);
-#endif
+				got_block = true;
 			}
-			else	{
+#if defined(_WIN64) && !defined(__CYGWIN__)
+			ReleaseMutex(write_random);
+#else
+			pthread_mutex_unlock(&write_random);
+#endif
+			if(!got_block)	{
 				continue_flag = 0;
 			}
 		}
@@ -3199,20 +3204,25 @@ void *thread_process_vanity(void *vargp)	{
 			key_mpz.Rand(&n_range_start,&n_range_end);
 		}
 		else	{
-			if(n_range_start.IsLower(&n_range_end))	{
+			/* The range check and the hand out of the next block must be one atomic step,
+			   otherwise two threads can both pass the check and the second one scans past the end of the range */
+			bool got_block = false;
 #if defined(_WIN64) && !defined(__CYGWIN__)
-				WaitForSingleObject(write_random, INFINITE);
-				key_mpz.Set(&n_range_start);
-				n_range_start.Add(N_SEQUENTIAL_MAX);
-				ReleaseMutex(write_random);
+			WaitForSingleObject(write_random, INFINITE);
 #else
-				pthread_mutex_lock(&write_random);
+			pthread_mutex_lock(&write_random);
+#endif
+			if(n_range_start.IsLower(&n_range_end))	{
 				key_mpz.Set(&n_range_start);
 				n_range_start.Add(N_SEQUENTIAL_MAX);
-				pthread_mutex_unlock(&write_random);
-#endif
+				got_block = true;
 			}
-			else	{
+#if defined(_WIN64) && !defined(__CYGWIN__)
+			ReleaseMutex(write_random);
+#else
+			pthread_mutex_unlock(&write_random);
+#endif
+			if(!got_block)	{
 				continue_flag = 0;
 			}
 		}
