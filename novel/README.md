@@ -293,6 +293,51 @@ provenance: the 2023 increase came from the original creator, the funds
 date to 2012, and the residual change (`bc1qnfmre...`, 90.4 BTC) is still
 unspent. `trace_owner.py` regenerates `owner_cluster.json`.
 
+### 7. The creator's own description: a deterministic wallet seed search (`walletfit.cpp`, `make walletfit`)
+
+**Where puzzle 71 stands.** Address `1PWo3JeB9jrGwfHDNpdGK54CRas7fsVzXU`,
+range 2^70 to 2^71, 7.1019 BTC from 69 outputs (0.071 in 2015, 0.639 in
+2017, 6.39 in 2023, the rest dust), never spent. With no spend there is no
+public key, so the target is a hash160 and the problem is a preimage
+search: about 2^69 expected hash evaluations, no square root shortcut,
+because the hash destroys the group structure that kangaroo uses (with a
+public key the same range would cost about 2^36 group operations; this gap
+of about 2^33 is the whole reason the exposed-key puzzles fell first).
+Measured here: 14.4 million keys per second on 4 CPU cores with `keyhunt`,
+so 5.9e20 expected keys is about 1.3 million years on this machine, and
+about 4700 years on one A100 if it sustains an assumed 4e9 keys per second. The chain
+adds nothing else: the 2025 and 2026 traffic is address poisoning (lookalike
+senders with 6 to 10 shared leading characters, about 2^52 grinding work
+for the longest, all dust).
+
+**The one structural clue is the creator's own sentence**, from the original
+thread: "There is no pattern. It is just consecutive keys from a
+deterministic wallet (masked with leading 000...0001 to set difficulty)."
+Read literally, key n is a 256 bit value d_n produced by a deterministic
+scheme from one seed, with the top bits cleared and bit n-1 set. The 83
+known keys give the low n-1 bits of d_n for every n, about 2400 bits, so
+a wrong seed dies at the first few keys and a right one survives to puzzle
+70, after which puzzle 71 is one more hash away. Ideas 3 and 4 tested
+random number generators; none of them is a hash derived wallet, which is
+what this sentence describes.
+
+**What was done.** `walletfit` enumerates seed spaces a 2014 script could
+have used (a list of 3600 puzzle and bitcoin themed words with common
+decorations, all lowercase strings of 1 to 5 letters, decimal numbers to
+5e7, hexadecimal numbers to 2^24) against 10 ways of turning a seed into a
+key stream: SHA256 of the seed with the index appended or prepended (decimal
+text, binary big and little endian, colon separated), HMAC-SHA256 keyed by
+the seed, SHA256d, and three hash chains; indices n-1, n and 256-n; the
+mask taken from the low or the top n-1 bits of the digest read as a big or
+a little endian number. Each candidate is matched against puzzles 2 to 40
+with early rejection (false positive probability about 2^-780) and a hit is
+re-verified up to puzzle 70 and printed with its prediction for puzzle 71.
+Validated by `./walletfit selftest` (part of `make test`), which plants keys
+from seven scheme, base and mask combinations and recovers each one with no
+stray match.
+
+**Result.** Pending: the full run is in progress and this line is replaced by its outcome.
+
 ### Candidates not started
 
 - Nonce forensics on the solvers' signatures (the 2025 spends from 130 and
@@ -323,6 +368,7 @@ make kangaroo
 python3 novel/nonce_fetch.py        # needs network and openpyxl; refreshes novel/nonce_sigs.json
 python3 novel/nonce_forensics.py    # offline, part of make test
 python3 novel/trace_owner.py        # needs network and openpyxl; writes novel/owner_cluster.json
+make walletfit && ./walletfit 4     # deterministic wallet seed search (about 25 minutes on 4 cores)
 ./kangaroo -p <public key hex> -r <start hex>:<end hex> [-t threads] [-k kangaroos per thread] [-d dp bits] [-n] [-s seed] [-q]
 ```
 
