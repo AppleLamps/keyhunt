@@ -88,14 +88,18 @@ against the known key; ops as a multiple of sqrt(W), several seeds each):
 | Gaudry-Schost, negation off (`-g -n`) | 2.94 3.18 1.17 3.48 | 1.97 0.48 0.94 | | 2.0 (theory 2.08) |
 
 A second run with 20 seeds per method at 45 bits (mean, standard
-deviation, standard error of the mean; all 80 runs recovered the key):
+deviation, standard error of the mean; every run recovered the key). The
+Gaudry-Schost rows were re-measured after a review fix (distinguished point
+matches with the opposite y are now solved as -P instead of discarded, and
+seeds are reproducible with `-s`); the earlier values were 1.84 and 2.23,
+within the standard errors of the new ones:
 
 | method | mean | sd | se |
 | --- | --- | --- | --- |
 | kangaroo, negation off | 2.34 | 1.18 | 0.26 |
 | kangaroo, negation on (`-e`) | 2.46 | 1.30 | 0.29 |
-| Gaudry-Schost, negation on (`-g`) | **1.84** | 0.82 | 0.18 |
-| Gaudry-Schost, negation off (`-g -n`) | 2.23 | 1.41 | 0.32 |
+| Gaudry-Schost, negation on (`-g`) | **1.51** | 0.77 | 0.17 |
+| Gaudry-Schost, negation off (`-g -n`) | 2.45 | 1.06 | 0.24 |
 
 Throughput on this 4 vCPU Xeon: 14 to 19 M group operations/s. For scale,
 keyhunt's BSGS on the same puzzle 50 took 494 s wall (table build included)
@@ -115,14 +119,14 @@ cannot grow past RAM, the kangaroo pays nothing up front.
    position. The sqrt(2) only exists when the search set is symmetric under
    negation, which is the next point.
 3. In Gaudry-Schost form (interval re-centred on zero, restarts at
-   distinguished points) the negation map pays: 1.84 against 2.23 without
-   it and against 2.34 for the plain kangaroo, in the direction of the 1.36
-   that Galbraith and Ruprai prove. Both constants sit about 0.3 to 0.4
-   above theory, which points at distinguished point overhead and the
-   untuned set shapes rather than at the method; the GS set shapes of the
-   paper (a tame set wider than the wild set) are the next tuning. The
-   variance of a single search is large (0.3 to 5 times sqrt(W)), so
-   comparisons need 20 or more seeds, as here.
+   distinguished points) the negation map pays: 1.51 against 2.45 without
+   it and against 2.34 for the plain kangaroo, close to the 1.36 that
+   Galbraith and Ruprai prove and a 1.55x saving over the plain kangaroo.
+   The remaining gap to theory is distinguished point overhead and the
+   untuned set shapes; the GS set shapes of the paper (a tame set wider
+   than the wild set) are the next tuning. The variance of a single search
+   is large (0.15 to 5 times sqrt(W)), so comparisons need 20 or more
+   seeds, as here.
 
 So the project's first result is a method keyhunt did not have (square root
 time with no table) and a measured, explained negative result about where
@@ -136,7 +140,7 @@ to a distinguished point and restart with a cheap precomputed offset
 wrapped back into the set, so no scalar multiplication is needed per
 restart. Collisions in the overlap of the two sets give k'. Negation maps
 the sets onto themselves, so equivalence classes halve the effective set
-size. Status: implemented, verified on 40 to 50 bits, constant 1.84 over
+size. Status: implemented, verified on 40 to 50 bits, constant 1.51 over
 20 seeds at 45 bits: the best method in this directory so far.
 
 ### Candidates not started
