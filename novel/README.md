@@ -77,9 +77,51 @@ one that works, and both lessons are general:
    dedicated jump, so two walkers trapped in the same cycle leave it the
    same way and the walk stays deterministic.
 
-**Measured.** Results table pending: the 45 to 55 bit evaluation (both
-modes, several seeds, BSGS comparison) is being run and will be added here.
-Every run checks the found key against the known key.
+**Measured** (4 threads x 256 kangaroos, solved puzzles, every run checked
+against the known key; ops as a multiple of sqrt(W), several seeds each):
+
+| method | 45 bits | 50 bits | 55 bits | mean |
+| --- | --- | --- | --- | --- |
+| kangaroo, negation off (`./kangaroo`) | 2.34 1.34 2.37 3.72 2.59 2.19 | 1.41 1.77 2.84 0.74 | 2.19 1.09 | **1.9** (theory 2.0) |
+| kangaroo, negation on (`-e`) | 2.86 2.90 3.96 2.74 0.84 2.04 | 2.23 2.82 1.46 5.99 | 2.87 4.86 | 3.0 |
+| Gaudry-Schost, negation on (`-g`) | 1.48 2.35 2.02 1.61 | 2.99 1.78 0.48 | | **1.6** (theory 1.36) |
+| Gaudry-Schost, negation off (`-g -n`) | 2.94 3.18 1.17 3.48 | 1.97 0.48 0.94 | | 2.0 (theory 2.08) |
+
+Throughput on this 4 vCPU Xeon: 14 to 19 M group operations/s. For scale,
+keyhunt's BSGS on the same puzzle 50 took 494 s wall (table build included)
+against 1 to 4 s for the kangaroo: BSGS pays for its table every time and
+cannot grow past RAM, the kangaroo pays nothing up front.
+
+**Conclusions.**
+
+1. The travelling herd kangaroo lands on its textbook constant (about 2.0).
+2. The negation map does **not** help the travelling herd: it makes it
+   worse (3.0). Negating a walker sends its position from the interval to
+   its mirror image near the group order, so each herd splits across two
+   distant bands and the steady drift the kangaroo relies on becomes a zero
+   drift random walk in absolute position. The sqrt(2) only exists when the
+   search set is symmetric under negation, which is the next point.
+3. In Gaudry-Schost form (interval re-centred on zero, restarts at
+   distinguished points) the negation map pays: 1.6 against 2.0 without it,
+   in the direction of the 1.36 that Galbraith and Ruprai prove. The sample
+   is small and the variance of these searches is large (a single run spans
+   0.5 to 3 times sqrt(W)); a 20 seed run per method is the next
+   measurement, and the GS set shapes of the paper (a tame set wider than
+   the wild set) are the next tuning.
+
+So the project's first result is a method keyhunt did not have (square root
+time with no table) and a measured, explained negative result about where
+the negation map belongs.
+
+### 2. Gaudry-Schost with equivalence classes (`-g`, in `kangaroo.cpp`)
+
+Centre the interval (Q' = Q - c*G, k' in [-W/2, W/2]), sample tame points
+uniformly from [-W/2, W/2] and wild points from k' + [-W/2, W/2], walk each
+to a distinguished point and restart with a cheap precomputed offset
+wrapped back into the set, so no scalar multiplication is needed per
+restart. Collisions in the overlap of the two sets give k'. Negation maps
+the sets onto themselves, so equivalence classes halve the effective set
+size. Status: implemented, verified on 40 to 50 bits, constant 1.6 so far.
 
 ### Candidates not started
 
@@ -90,8 +132,9 @@ Every run checks the found key against the known key.
   run can be stopped, resumed and shared between machines.
 - Using keyhunt's AVX-512 lanes for the field multiplication inside the
   herd step (the herd is naturally lane parallel).
-- Gaudry-Schost with the negation map, which some analyses put a few
-  percent ahead of kangaroo for the same memory.
+- Gaudry-Schost set shapes from Galbraith-Ruprai (tame set wider than the
+  wild set), and the 3 and 4 kangaroo variants of Galbraith-Pollard-Ruprai
+  (1.72*sqrt(W) without equivalence classes).
 
 ## Running
 
@@ -100,6 +143,7 @@ make kangaroo
 ./kangaroo -p <public key hex> -r <start hex>:<end hex> [-t threads] [-k kangaroos per thread] [-d dp bits] [-n] [-s seed] [-q]
 ```
 
-`-n` disables the negation map (for A/B measurements). The program prints
-the number of group operations as a multiple of sqrt(W), which is the
-number to compare between methods.
+`-g` selects Gaudry-Schost; `-e` / `-n` force the negation map on / off
+(default: off for kangaroo, on for Gaudry-Schost). The program prints the
+number of group operations as a multiple of sqrt(W), which is the number
+to compare between methods.

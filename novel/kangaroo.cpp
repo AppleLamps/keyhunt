@@ -27,8 +27,22 @@
  * leave it the same way. A large jump table with linearly spread sizes keeps
  * cycles rare (2-cycles about 1 in 2*JUMPS steps, 4-cycles 1 in 4*JUMPS^2).
  *
+ * Gaudry-Schost mode (-g): the interval is re-centred on zero (Q' = Q - c*G
+ * with c the midpoint, so k' lies in [-W/2, W/2]) and the negation map then
+ * maps the search set onto itself. Tame walkers sample [-W/2, W/2], wild
+ * walkers sample k' + [-W/2, W/2]; each walk runs to a distinguished point
+ * and then restarts at a fresh pseudo random position (a precomputed offset,
+ * wrapped back into the set), so the two herds are uniform samples of their
+ * sets and a tame/wild match in the overlap gives k'. With equivalence classes
+ * this is the Galbraith-Ruprai setting (about 1.36*sqrt(W) expected), and it
+ * is where the negation map belongs: in the travelling herd kangaroo a
+ * negation moves a walker to the mirror image of the interval, which kills
+ * the herd's drift and costs more than the sqrt(2) it was meant to save.
+ *
  * Usage: kangaroo -p <pubkey hex> -r <start>:<end> [-t threads] [-k kangaroos/thread]
- *                 [-d dp bits] [-n] (no negation map) [-s seed] [-q]
+ *                 [-d dp bits] [-g] (Gaudry-Schost) [-e | -n] (negation map on | off) [-s seed] [-q]
+ * The negation map defaults to off in kangaroo mode and on in Gaudry-Schost mode
+ * (measured: it only pays in the latter, see novel/README.md).
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -60,6 +74,15 @@ static Point escP; static Int escD;  // cycle escape jump
 static int dp_bits = -1;
 static uint64_t dp_mask;
 static bool use_negation = true;
+static int negation_opt = -1;        // -1 default per mode, 0 forced off (-n), 1 forced on (-e)
+static bool gs_mode = false;         // Gaudry-Schost: centred interval, restart at distinguished points
+static Int centre;                   // c = a + W/2 (gs_mode): k = c + k'
+static Point Qc;                     // the target used by the walk (Q, or Q - c*G in gs_mode)
+static Int half_width;               // W/2
+#define RESTARTS 64
+static Point restartP[RESTARTS];     // restart offsets r_i*G, r_i pseudo random in [0, W)
+static Int restartD[RESTARTS];
+static Point widthP;                 // W*G, to wrap a position back into [-W/2, W/2]
 static bool quiet = false;
 static int nthreads = 4, per_thread = 512;
 static std::atomic<bool> found(false);
@@ -79,11 +102,16 @@ static void reduce_mod_order(Int &k) {
   while (k.IsGreaterOrEqual(&secp->order)) k.Sub(&secp->order);
 }
 
+// k is the coefficient of G for Qc; in gs_mode the real key is k + centre
 static bool verify(Int &k) {
-  Int t(k); reduce_mod_order(t);
+  Int t(k);
+  if (gs_mode) t.Add(&centre);
+  reduce_mod_order(t);
   if (t.IsZero()) return false;
   Point P = secp->ComputePublicKey(&t);
-  return P.x.IsEqual(&Q.x) && P.y.IsEqual(&Q.y);
+  if (!(P.x.IsEqual(&Q.x) && P.y.IsEqual(&Q.y))) return false;
+  k.Set(&t);
+  return true;
 }
 
 // A kangaroo at point P with (sign, dist) means P = sign*Q + dist*G (sign 0: tame).
@@ -151,23 +179,44 @@ static void canonicalize(Walker &w) {
   }
 }
 
-// tame: random position inside the interval; wild: Q plus a random offset in
-// [-W/2, W/2), so both herds cover the same region of the line
+// Position bookkeeping: tame point = dist*G, wild point = sign*Qc + dist*G.
+// Kangaroo mode: tame at a random position inside the interval, wild at Q plus a
+// random offset in [-W/2, W/2), so both herds cover the same region of the line.
+// GS mode: tame dist and wild offset both uniform in [-W/2, W/2).
+static Point scalar_point(Int &r) {
+  Int mag(r); bool neg = mag.IsNegative(); if (neg) mag.Neg();
+  Point R = secp->ComputePublicKey(&mag);
+  if (neg) R = secp->Negation(R);
+  return R;
+}
+
 static void seed(Walker &w, bool tame) {
   Int r; r.Rand(&range_start, &range_end);
+  if (gs_mode || !tame) { r.Sub(&range_start); r.Sub(&half_width); }   // [-W/2, W/2)
   if (tame) {
-    w.P = secp->ComputePublicKey(&r);
+    w.P = scalar_point(r);
     w.dist.Set(&r); w.sign = 0;
   } else {
-    Int half(range_width); half.ShiftR(1);
-    r.Sub(&range_start); r.Sub(&half);   // offset in [-W/2, W/2)
-    Int mag(r); bool neg = mag.IsNegative(); if (neg) mag.Neg();
-    Point R = secp->ComputePublicKey(&mag);
-    if (neg) R = secp->Negation(R);
-    w.P = secp->AddDirect(Q, R);
+    Point R = scalar_point(r);
+    w.P = secp->AddDirect(Qc, R);
     w.dist.Set(&r); w.sign = 1;
   }
   w.since_dp = 0;
+  reset_cycle_state(w);
+  canonicalize(w);
+}
+
+// GS restart after a distinguished point: add a pseudo random offset and wrap the
+// position back into [-W/2, W/2) with W*G, so the walker's set is sampled uniformly
+// without a scalar multiplication. The offset index comes from the point, so the
+// restart is still a function of the walk.
+static void gs_restart(Walker &w) {
+  int i = (int)(w.P.x.bits64[2] % RESTARTS);
+  w.P = secp->AddDirect(w.P, restartP[i]);
+  w.dist.Add(&restartD[i]);
+  // the position of a walker is sign*k' + dist; only dist is known, wrap it
+  // (k' is in [-W/2, W/2] too, so the sum stays within one width of the set)
+  if (w.dist.IsGreaterOrEqual(&half_width)) { w.dist.Sub(&range_width); Point nw = secp->Negation(widthP); w.P = secp->AddDirect(w.P, nw); }
   reset_cycle_state(w);
   canonicalize(w);
 }
@@ -227,8 +276,13 @@ static void *worker(void *arg) {
         if (report_dp(k.P, k.sign, k.dist)) {
           if (found) break;
           seed(k, k.sign == 0); reseeds++;
-        }
+        } else if (gs_mode) gs_restart(k);
       } else if (k.since_dp > stuck_limit) { seed(k, k.sign == 0); reseeds++; stuck++; }
+      if (gs_mode && !found) {
+        // a tame walker that left [-W/2, W/2) samples nothing useful: restart it
+        Int mag(k.dist); if (mag.IsNegative()) mag.Neg();
+        if (k.sign == 0 && mag.IsGreater(&half_width)) gs_restart(k);
+      }
     }
     local += K;
     if ((local & 0xFFFF) == 0) { total_steps += local; local = 0; }
@@ -239,7 +293,7 @@ static void *worker(void *arg) {
 }
 
 static void usage() {
-  fprintf(stderr, "usage: kangaroo -p <pubkey hex> -r <start>:<end> [-t threads] [-k kangaroos/thread] [-d dp bits] [-n] [-s seed] [-q]\n");
+  fprintf(stderr, "usage: kangaroo -p <pubkey hex> -r <start>:<end> [-t threads] [-k kangaroos/thread] [-d dp bits] [-g] [-e|-n] [-s seed] [-q]\n");
   exit(1);
 }
 
@@ -247,20 +301,23 @@ int main(int argc, char **argv) {
   const char *pub = NULL, *range = NULL;
   uint64_t seedv = 0; bool have_seed = false;
   int c;
-  while ((c = getopt(argc, argv, "p:r:t:k:d:ns:q")) != -1) {
+  while ((c = getopt(argc, argv, "p:r:t:k:d:negs:q")) != -1) {
     switch (c) {
       case 'p': pub = optarg; break;
       case 'r': range = optarg; break;
       case 't': nthreads = atoi(optarg); break;
       case 'k': per_thread = atoi(optarg); break;
       case 'd': dp_bits = atoi(optarg); break;
-      case 'n': use_negation = false; break;
+      case 'n': negation_opt = 0; break;
+      case 'e': negation_opt = 1; break;
+      case 'g': gs_mode = true; break;
       case 's': seedv = strtoull(optarg, NULL, 10); have_seed = true; break;
       case 'q': quiet = true; break;
       default: usage();
     }
   }
   if (!pub || !range) usage();
+  use_negation = negation_opt < 0 ? gs_mode : (negation_opt == 1);
   secp = new Secp256K1(); secp->Init();
   if (have_seed) rseed(seedv); else rseed((unsigned long)time(NULL) ^ (unsigned long)getpid());
 
@@ -273,6 +330,14 @@ int main(int argc, char **argv) {
   if (!range_start.IsLower(&range_end)) { fprintf(stderr, "empty range\n"); return 1; }
   range_width.Sub(&range_end, &range_start);
   int wbits = range_width.GetBitLength();
+  half_width.Set(&range_width); half_width.ShiftR(1);
+  centre.Set(&range_start); centre.Add(&half_width);
+  if (gs_mode) {
+    Point C = secp->ComputePublicKey(&centre);
+    Point nC = secp->Negation(C);
+    Qc = secp->AddDirect(Q, nC);                     // Q' = Q - c*G, k' in [-W/2, W/2]
+    widthP = secp->ComputePublicKey(&range_width);
+  } else Qc = Q;
   if (per_thread < 2) per_thread = 2;
   per_thread &= ~1;
   int Ktotal = nthreads * per_thread;
@@ -284,6 +349,15 @@ int main(int argc, char **argv) {
   // few jumps cancel exactly and the walk falls into fruitless cycles constantly.
   int klog = (int)round(log2((double)Ktotal));
   int mean_bits = wbits / 2 - 2 + klog; if (mean_bits < 8) mean_bits = 8;
+  if (dp_bits < 0) {
+    dp_bits = (int)floor(wbits / 2.0 - log2((double)Ktotal) - 4);
+    if (dp_bits < 0) dp_bits = 0;
+    if (dp_bits > 40) dp_bits = 40;
+  }
+  if (gs_mode) {
+    // a walk of about 2^dp steps should cover a small fraction (1/64) of the set
+    mean_bits = wbits - dp_bits - 6; if (mean_bits < 8) mean_bits = 8;
+  }
   Int mean; mean.SetInt32(1); mean.ShiftL(mean_bits);
   uint64_t rs = 0x9E3779B97F4A7C15ULL;          // splitmix64, fixed seed: same table in every run
   auto nextrand = [&rs]() { uint64_t z = (rs += 0x9E3779B97F4A7C15ULL); z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL; z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL; return z ^ (z >> 31); };
@@ -297,13 +371,13 @@ int main(int argc, char **argv) {
   // escape jump: random in [2*mean, 3*mean)
   escD.Set(&mean); escD.ShiftL(1); { Int r = random_below(mean); escD.Add(&r); }
   escP = secp->ComputePublicKey(&escD);
-  int e = mean_bits;
-  if (dp_bits < 0) {
-    // keep the distinguished point overhead (K * 2^dp) near sqrt(W)/16
-    dp_bits = (int)floor(wbits / 2.0 - log2((double)Ktotal) - 4);
-    if (dp_bits < 0) dp_bits = 0;
-    if (dp_bits > 40) dp_bits = 40;
+  if (gs_mode) {
+    for (int i = 0; i < RESTARTS; i++) {
+      restartD[i] = random_below(range_width);
+      restartP[i] = secp->ComputePublicKey(&restartD[i]);
+    }
   }
+  int e = mean_bits;
   dp_mask = (dp_bits >= 64) ? ~0ULL : ((1ULL << dp_bits) - 1);
 
   if (!quiet) {
@@ -311,7 +385,8 @@ int main(int argc, char **argv) {
     printf("[+] range %s:%s (%d bits)\n", hs, he, wbits); free(hs); free(he);
     printf("[+] %d threads x %d kangaroos, %d jumps of mean 2^%d, dp %d bits, negation map %s\n",
            nthreads, per_thread, JUMPS, e, dp_bits, use_negation ? "on" : "off");
-    printf("[+] expected ~%.3g ops (%.2f*sqrt(W))\n", (use_negation ? 1.414 : 2.0) * sqrtW, use_negation ? 1.414 : 2.0);
+    double expect = gs_mode ? (use_negation ? 1.36 : 2.08) : (use_negation ? 1.414 : 2.0);
+    printf("[+] mode %s, expected ~%.3g ops (%.2f*sqrt(W))\n", gs_mode ? "Gaudry-Schost" : "kangaroo", expect * sqrtW, expect);
     fflush(stdout);
   }
   auto t0 = std::chrono::steady_clock::now();
