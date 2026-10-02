@@ -69,7 +69,7 @@ CXX_SRCS := oldbloom/bloom.cpp bloom/bloom.cpp \
             secp256k1/Int.cpp secp256k1/Point.cpp secp256k1/SECP256K1.cpp \
             secp256k1/IntMod.cpp secp256k1/Random.cpp secp256k1/IntGroup.cpp \
             hash/ripemd160.cpp hash/sha256.cpp hash/ripemd160_sse.cpp hash/sha256_sse.cpp \
-            hash/hash160_avx2.cpp
+            hash/hash160_simd.cpp
 
 COMMON_OBJS := $(addprefix $(BUILD)/,$(C_SRCS:.c=.o) $(CXXC_SRCS:.c=.o) $(CXX_SRCS:.cpp=.o))
 
@@ -150,8 +150,8 @@ $(BUILD)/legacy/base58/base58.o $(BUILD)/legacy/xxhash/xxhash.o: $(BUILD)/legacy
 
 # ---- tests ------------------------------------------------------------------
 
-TEST_BINS := $(BUILD)/test_hash160
-TEST_HASH_OBJS := $(addprefix $(BUILD)/hash/,hash160_avx2.o sha256.o ripemd160.o ripemd160_sse.o sha256_sse.o) \
+TEST_BINS := $(BUILD)/test_hash160 $(BUILD)/test_int
+TEST_HASH_OBJS := $(addprefix $(BUILD)/hash/,hash160_simd.o sha256.o ripemd160.o ripemd160_sse.o sha256_sse.o) \
                   $(addprefix $(BUILD)/secp256k1/,Int.o Point.o SECP256K1.o IntMod.o Random.o IntGroup.o) \
                   $(BUILD)/util.o
 
@@ -159,8 +159,13 @@ $(BUILD)/test_hash160: $(BUILD)/tests/test_hash160.o $(TEST_HASH_OBJS)
 	@echo "  LD    $@"
 	$(Q)$(CXX) $(MAIN_CXXFLAGS) -o $@ $^ $(LDLIBS)
 
+$(BUILD)/test_int: $(BUILD)/tests/test_int.o $(TEST_HASH_OBJS)
+	@echo "  LD    $@"
+	$(Q)$(CXX) $(MAIN_CXXFLAGS) -o $@ $^ $(LDLIBS)
+
 test: keyhunt $(TEST_BINS)
 	@$(BUILD)/test_hash160
+	@$(BUILD)/test_int
 	@sh tests/run_tests.sh ./keyhunt
 
 clean:

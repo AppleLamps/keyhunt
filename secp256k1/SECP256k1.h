@@ -59,10 +59,12 @@ public:
   uint8_t *h0,uint8_t *h1,uint8_t *h2,uint8_t *h3);
 
   // 8-way AVX2 P2PKH hash160 of k[0..7]. Only call when hash160_avx2_available().
-  // GetHash160_8 hashes the point itself (compressed prefix follows y parity),
-  // GetHash160_fromX_8 hashes the compressed form of k[i].x with the given prefix.
-  void GetHash160_8(bool compressed, Point *k, uint8_t *const h[8]);
-  void GetHash160_fromX_8(unsigned char prefix, Point *k, uint8_t *const h[8]);
+  // SIMD hash160 of `lanes` points (8 = AVX2, 16 = AVX-512; use the value of
+  // hash160_simd_lanes()). GetHash160_N hashes the point itself (compressed
+  // prefix follows y parity), GetHash160_fromX_N hashes the compressed form of
+  // k[i].x with the given prefix.
+  void GetHash160_N(int lanes, bool compressed, Point *k, uint8_t *const *h);
+  void GetHash160_fromX_N(int lanes, unsigned char prefix, Point *k, uint8_t *const *h);
 
   Point Add(Point &p1, Point &p2);
   Point Add2(Point &p1, Point &p2);

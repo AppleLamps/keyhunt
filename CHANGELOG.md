@@ -1,4 +1,8 @@
 # Unreleased
+- Address/rmd160 mode without `-e` computes Y and hashes each key once with its real prefix instead of hashing every X with both `02` and `03`. The speed counter now shows real keys (it was doubled before); useful throughput is up 1.4x to 1.8x together with the items below
+- 16-way AVX-512 hash160 kernel (runtime detected, `KEYHUNT_SIMD=avx2|none` overrides), shared kernel source with the 8-way AVX2 one, messages are built directly in lane parallel layout (no transposes)
+- secp256k1 field arithmetic: squaring 2x faster (it was slower than a multiplication), branchless 4-limb modular add/sub/neg, points are computed in place in the search loop (no Point copies, no negations), batch inversion runs 4 interleaved chains with a single inversion. xpoint mode about 1.35x faster, BSGS about 1.08x
+- `tests/test_int.cpp` (field arithmetic), `tests/test_hash160.cpp` covers both SIMD kernels
 - New Makefile: incremental and parallel builds (`make -j`), objects in `build/`, `ARCH`, `LTO`, `DEBUG`, `SANITIZE` options, `make test`
 - 8-way AVX2 SHA256+RIPEMD160 (runtime detected) for address and rmd160 modes, about 1.5x faster; endomorphism, ETH and other modes keep the SSE path
 - Multi-threaded std::sort replaces the hand written sorts, table driven hex parsing (4M address file loads ~30% faster)

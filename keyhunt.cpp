@@ -27,7 +27,7 @@ email: albertobsd@gmail.com
 
 #include "hash/sha256.h"
 #include "hash/ripemd160.h"
-#include "hash/hash160_avx2.h"
+#include "hash/hash160_simd.h"
 
 #if defined(_WIN64) && !defined(__CYGWIN__)
 #include "getopt.h"
@@ -2171,7 +2171,9 @@ int main(int argc, char **argv)	{
 					}
 				}
 				else	{
-					if(FLAGSEARCH == SEARCH_COMPRESS)	{
+					/* vanity mode hashes every x with both the 02 and the 03 prefix (keys k and n-k),
+					   address/rmd160 mode computes y and hashes each key once */
+					if(FLAGSEARCH == SEARCH_COMPRESS && FLAGMODE == MODE_VANITY)	{
 						total.Mult(2);
 					}
 				}
@@ -2513,24 +2515,26 @@ void *thread_process(void *vargp)	{
 	Int dyn;
 	Int _s;
 	Int _p;
-	Point pp;
-	Point pn;
 	int i,l,pp_offset,pn_offset,hLength = (CPU_GRP_SIZE / 2 - 1);
 	uint64_t j,count;
 	Point R,temporal,publickey;
 	int r,thread_number,continue_flag = 1,k;
 	char *hextemp = NULL;
 	
-	char publickeyhashrmd160[20];
 	char publickeyhashrmd160_uncompress[4][20];
 	char rawvalue[32];
 	
 	char publickeyhashrmd160_endomorphism[12][4][20];
 	
-	bool calculate_y = FLAGSEARCH == SEARCH_UNCOMPRESS || FLAGSEARCH == SEARCH_BOTH || FLAGCRYPTO  == CRYPTO_ETH;
-	bool use_avx2 = (FLAGMODE == MODE_ADDRESS || FLAGMODE == MODE_RMD160) && FLAGCRYPTO == CRYPTO_BTC && !FLAGENDOMORPHISM && hash160_avx2_available();
-	char hash160_avx2_c[2][8][20];
-	char hash160_avx2_u[8][20];
+	/* Plain BTC address/rmd160 search (no endomorphism): y is computed so each key
+	   is hashed once with its real 02/03 prefix. The y coordinate costs one
+	   modular multiplication, far less than the second hash160 the x-only path
+	   needs (02 and 03, which covers k and n-k: useless in a range search). */
+	bool plain_btc = (FLAGMODE == MODE_ADDRESS || FLAGMODE == MODE_RMD160) && FLAGCRYPTO == CRYPTO_BTC && !FLAGENDOMORPHISM;
+	bool calculate_y = FLAGSEARCH == SEARCH_UNCOMPRESS || FLAGSEARCH == SEARCH_BOTH || FLAGCRYPTO  == CRYPTO_ETH || plain_btc;
+	int simd_lanes = plain_btc ? hash160_simd_lanes() : 0;	/* 16 (AVX-512), 8 (AVX2) or 0 */
+	char hash160_simd_c[16][20];
+	char hash160_simd_u[16][20];
 	Int key_mpz,keyfound,temp_stride;
 	tt = (struct tothread *)vargp;
 	thread_number = tt->nt;
@@ -2599,17 +2603,19 @@ void *thread_process(void *vargp)	{
 				pts[CPU_GRP_SIZE / 2] = startP;
 
 				for(i = 0; i<hLength; i++) {
-					pp = startP;
-					pn = startP;
+					pp_offset = CPU_GRP_SIZE / 2 + (i + 1);
+					pn_offset = CPU_GRP_SIZE / 2 - (i + 1);
+					/* The points are computed in place in pts[] (no Point copies) */
+					Point &pp = pts[pp_offset];
+					Point &pn = pts[pn_offset];
 
 					// P = startP + i*G
-					dy.ModSub(&Gn[i].y,&pp.y);
+					dy.ModSub(&Gn[i].y,&startP.y);
 
 					_s.ModMulK1(&dy,&dx[i]);        // s = (p2.y-p1.y)*inverse(p2.x-p1.x);
 					_p.ModSquareK1(&_s);            // _p = pow2(s)
 
-					pp.x.ModNeg();
-					pp.x.ModAdd(&_p);
+					pp.x.ModSub(&_p,&startP.x);
 					pp.x.ModSub(&Gn[i].x);           // rx = pow2(s) - p1.x - p2.x;
 
 					if(calculate_y)	{
@@ -2619,27 +2625,20 @@ void *thread_process(void *vargp)	{
 					}
 
 					// P = startP - i*G  , if (x,y) = i*G then (x,-y) = -i*G
-					dyn.Set(&Gn[i].y);
-					dyn.ModNeg();
-					dyn.ModSub(&pn.y);
+					// The slope is -(Gy + Py)/dx: its square is the same as for (Gy + Py)/dx,
+					// so the negation is skipped and the sign is folded into the y formula.
+					dyn.ModAdd(&Gn[i].y,&startP.y);
 
-					_s.ModMulK1(&dyn,&dx[i]);      // s = (p2.y-p1.y)*inverse(p2.x-p1.x);
+					_s.ModMulK1(&dyn,&dx[i]);      // -s = (p2.y+p1.y)*inverse(p2.x-p1.x);
 					_p.ModSquareK1(&_s);            // _p = pow2(s)
-					pn.x.ModNeg();
-					pn.x.ModAdd(&_p);
+					pn.x.ModSub(&_p,&startP.x);
 					pn.x.ModSub(&Gn[i].x);          // rx = pow2(s) - p1.x - p2.x;
 
 					if(calculate_y)	{
-						pn.y.ModSub(&Gn[i].x,&pn.x);
+						pn.y.ModSub(&pn.x,&Gn[i].x);
 						pn.y.ModMulK1(&_s);
-						pn.y.ModAdd(&Gn[i].y);          // ry = - p2.y - s*(ret.x-p2.x);
+						pn.y.ModAdd(&Gn[i].y);          // ry = s*(p2.x-ret.x) + p2.y  with s the real slope
 					}
-
-					pp_offset = CPU_GRP_SIZE / 2 + (i + 1);
-					pn_offset = CPU_GRP_SIZE / 2 - (i + 1);
-
-					pts[pp_offset] = pp;
-					pts[pn_offset] = pn;
 					
 					if(FLAGENDOMORPHISM)	{
 						/*
@@ -2675,73 +2674,62 @@ void *thread_process(void *vargp)	{
 					endomorphism_beta2[CPU_GRP_SIZE / 2].x.ModMulK1(&pts[CPU_GRP_SIZE / 2].x, &beta2);
 				}
 
-				// First point (startP - (GRP_SZIE/2)*G)
-				pn = startP;
-				dyn.Set(&Gn[i].y);
-				dyn.ModNeg();
-				dyn.ModSub(&pn.y);
+				// First point (startP - (GRP_SZIE/2)*G), in place, same formulas as above
+				{
+					Point &pn = pts[0];
+					dyn.ModAdd(&Gn[i].y,&startP.y);
 
-				_s.ModMulK1(&dyn,&dx[i]);
-				_p.ModSquareK1(&_s);
+					_s.ModMulK1(&dyn,&dx[i]);
+					_p.ModSquareK1(&_s);
 
-				pn.x.ModNeg();
-				pn.x.ModAdd(&_p);
-				pn.x.ModSub(&Gn[i].x);
-				
-				if(calculate_y)	{
-					pn.y.ModSub(&Gn[i].x,&pn.x);
-					pn.y.ModMulK1(&_s);
-					pn.y.ModAdd(&Gn[i].y);
+					pn.x.ModSub(&_p,&startP.x);
+					pn.x.ModSub(&Gn[i].x);
+					
+					if(calculate_y)	{
+						pn.y.ModSub(&pn.x,&Gn[i].x);
+						pn.y.ModMulK1(&_s);
+						pn.y.ModAdd(&Gn[i].y);
+					}
 				}
-
-				pts[0] = pn;
 				
 				/*
 					First point for endomorphism because pts[0] was not calcualte previously
 				*/
 				if(FLAGENDOMORPHISM)	{
 					if( calculate_y  )	{
-						endomorphism_beta[0].y.Set(&pn.y);
-						endomorphism_beta2[0].y.Set(&pn.y);
+						endomorphism_beta[0].y.Set(&pts[0].y);
+						endomorphism_beta2[0].y.Set(&pts[0].y);
 					}
-					endomorphism_beta[0].x.ModMulK1(&pn.x, &beta);
-					endomorphism_beta2[0].x.ModMulK1(&pn.x, &beta2);
+					endomorphism_beta[0].x.ModMulK1(&pts[0].x, &beta);
+					endomorphism_beta2[0].x.ModMulK1(&pts[0].x, &beta2);
 				}
 								
 				j = 0;
-				if(use_avx2)	{
+				if(simd_lanes)	{
 					/*
-						8 points per iteration with the AVX2 hash160 kernels.
-						Same checks as the 4 way loop below for the plain (non endomorphism) BTC case.
+						simd_lanes points per iteration with the AVX2 (8) or AVX-512 (16)
+						hash160 kernels. Plain (non endomorphism) BTC case only.
 					*/
-					for(; j < CPU_GRP_SIZE/4; j += 2)	{
-						Point *grp8 = &pts[j*4];
-						uint8_t *hp[8];
+					for(; j < CPU_GRP_SIZE/4; j += simd_lanes/4)	{
+						Point *grpN = &pts[j*4];
+						uint8_t *hp[16];
 						if(FLAGSEARCH == SEARCH_COMPRESS || FLAGSEARCH == SEARCH_BOTH)	{
-							for(l = 0; l < 2; l++)	{
-								for(k = 0; k < 8; k++)	hp[k] = (uint8_t*)hash160_avx2_c[l][k];
-								secp->GetHash160_fromX_8((unsigned char)(0x02 + l),grp8,hp);
-								for(k = 0; k < 8; k++)	{
-									if(bloom_check(&bloom,hash160_avx2_c[l][k],MAXLENGTHADDRESS) && searchbinary(addressTable,hash160_avx2_c[l][k],N))	{
-										keyfound.SetInt32(k);
-										keyfound.Mult(&stride);
-										keyfound.Add(&key_mpz);
-										publickey = secp->ComputePublicKey(&keyfound);
-										secp->GetHash160(P2PKH,true,publickey,(uint8_t*)publickeyhashrmd160);
-										if(memcmp(hash160_avx2_c[l][k],publickeyhashrmd160,20) != 0)	{
-											keyfound.Neg();
-											keyfound.Add(&secp->order);
-										}
-										writekey(true,&keyfound);
-									}
+							for(k = 0; k < simd_lanes; k++)	hp[k] = (uint8_t*)hash160_simd_c[k];
+							secp->GetHash160_N(simd_lanes,true,grpN,hp);
+							for(k = 0; k < simd_lanes; k++)	{
+								if(bloom_check(&bloom,hash160_simd_c[k],MAXLENGTHADDRESS) && searchbinary(addressTable,hash160_simd_c[k],N))	{
+									keyfound.SetInt32(k);
+									keyfound.Mult(&stride);
+									keyfound.Add(&key_mpz);
+									writekey(true,&keyfound);
 								}
 							}
 						}
 						if(FLAGSEARCH == SEARCH_UNCOMPRESS || FLAGSEARCH == SEARCH_BOTH)	{
-							for(k = 0; k < 8; k++)	hp[k] = (uint8_t*)hash160_avx2_u[k];
-							secp->GetHash160_8(false,grp8,hp);
-							for(k = 0; k < 8; k++)	{
-								if(bloom_check(&bloom,hash160_avx2_u[k],MAXLENGTHADDRESS) && searchbinary(addressTable,hash160_avx2_u[k],N))	{
+							for(k = 0; k < simd_lanes; k++)	hp[k] = (uint8_t*)hash160_simd_u[k];
+							secp->GetHash160_N(simd_lanes,false,grpN,hp);
+							for(k = 0; k < simd_lanes; k++)	{
+								if(bloom_check(&bloom,hash160_simd_u[k],MAXLENGTHADDRESS) && searchbinary(addressTable,hash160_simd_u[k],N))	{
 									keyfound.SetInt32(k);
 									keyfound.Mult(&stride);
 									keyfound.Add(&key_mpz);
@@ -2749,8 +2737,8 @@ void *thread_process(void *vargp)	{
 								}
 							}
 						}
-						count += 8;
-						temp_stride.SetInt32(8);
+						count += simd_lanes;
+						temp_stride.SetInt32(simd_lanes);
 						temp_stride.Mult(&stride);
 						key_mpz.Add(&temp_stride);
 					}
@@ -2773,8 +2761,7 @@ void *thread_process(void *vargp)	{
 										secp->GetHash160_fromX(P2PKH,0x03,&endomorphism_beta2[(j*4)].x,&endomorphism_beta2[(j*4)+1].x,&endomorphism_beta2[(j*4)+2].x,&endomorphism_beta2[(j*4)+3].x,(uint8_t*)publickeyhashrmd160_endomorphism[5][0],(uint8_t*)publickeyhashrmd160_endomorphism[5][1],(uint8_t*)publickeyhashrmd160_endomorphism[5][2],(uint8_t*)publickeyhashrmd160_endomorphism[5][3]);
 									}
 									else	{
-										secp->GetHash160_fromX(P2PKH,0x02,&pts[(j*4)].x,&pts[(j*4)+1].x,&pts[(j*4)+2].x,&pts[(j*4)+3].x,(uint8_t*)publickeyhashrmd160_endomorphism[0][0],(uint8_t*)publickeyhashrmd160_endomorphism[0][1],(uint8_t*)publickeyhashrmd160_endomorphism[0][2],(uint8_t*)publickeyhashrmd160_endomorphism[0][3]);
-										secp->GetHash160_fromX(P2PKH,0x03,&pts[(j*4)].x,&pts[(j*4)+1].x,&pts[(j*4)+2].x,&pts[(j*4)+3].x,(uint8_t*)publickeyhashrmd160_endomorphism[1][0],(uint8_t*)publickeyhashrmd160_endomorphism[1][1],(uint8_t*)publickeyhashrmd160_endomorphism[1][2],(uint8_t*)publickeyhashrmd160_endomorphism[1][3]);
+										secp->GetHash160(P2PKH,true,pts[(j*4)],pts[(j*4)+1],pts[(j*4)+2],pts[(j*4)+3],(uint8_t*)publickeyhashrmd160_endomorphism[0][0],(uint8_t*)publickeyhashrmd160_endomorphism[0][1],(uint8_t*)publickeyhashrmd160_endomorphism[0][2],(uint8_t*)publickeyhashrmd160_endomorphism[0][3]);
 									}
 									
 								}
@@ -2900,23 +2887,14 @@ void *thread_process(void *vargp)	{
 											}
 										}
 										else	{
-											for(l = 0;l < 2; l++)	{
-												r = bloom_check(&bloom,publickeyhashrmd160_endomorphism[l][k],MAXLENGTHADDRESS);
+											r = bloom_check(&bloom,publickeyhashrmd160_endomorphism[0][k],MAXLENGTHADDRESS);
+											if(r) {
+												r = searchbinary(addressTable,publickeyhashrmd160_endomorphism[0][k],N);
 												if(r) {
-													r = searchbinary(addressTable,publickeyhashrmd160_endomorphism[l][k],N);
-													if(r) {
-														keyfound.SetInt32(k);
-														keyfound.Mult(&stride);
-														keyfound.Add(&key_mpz);
-														
-														publickey = secp->ComputePublicKey(&keyfound);
-														secp->GetHash160(P2PKH,true,publickey,(uint8_t*)publickeyhashrmd160);
-														if(memcmp(publickeyhashrmd160_endomorphism[l][k],publickeyhashrmd160,20) != 0)	{
-															keyfound.Neg();
-															keyfound.Add(&secp->order);
-														}
-														writekey(true,&keyfound);
-													}
+													keyfound.SetInt32(k);
+													keyfound.Mult(&stride);
+													keyfound.Add(&key_mpz);
+													writekey(true,&keyfound);
 												}
 											}
 										}
@@ -3120,22 +3098,19 @@ void *thread_process(void *vargp)	{
 
 				steps[thread_number]++;
 
-				// Next start point (startP + GRP_SIZE*G)
-				pp = startP;
-				dy.ModSub(&_2Gn.y,&pp.y);
+				// Next start point (startP + GRP_SIZE*G), computed into startP itself
+				dy.ModSub(&_2Gn.y,&startP.y);
 
 				_s.ModMulK1(&dy,&dx[i + 1]);
 				_p.ModSquareK1(&_s);
 
-				pp.x.ModNeg();
-				pp.x.ModAdd(&_p);
-				pp.x.ModSub(&_2Gn.x);
+				_p.ModSub(&startP.x);
+				startP.x.ModSub(&_p,&_2Gn.x);
 
 				//The Y value for the next start point always need to be calculated
-				pp.y.ModSub(&_2Gn.x,&pp.x);
-				pp.y.ModMulK1(&_s);
-				pp.y.ModSub(&_2Gn.y);
-				startP = pp;
+				startP.y.ModSub(&_2Gn.x,&startP.x);
+				startP.y.ModMulK1(&_s);
+				startP.y.ModSub(&_2Gn.y);
 			}while(count < N_SEQUENTIAL_MAX && continue_flag);
 		}
 	} while(continue_flag);
