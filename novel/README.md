@@ -171,8 +171,18 @@ seed and derivation combinations and must recover them all. The full run
 is `./lineage <threads> [from [to]]`; the optional family index range
 (0..14, in the order printed) lets a long run be split or resumed.
 
-**Result.** Pending: the run is in progress and this line is replaced by
-its outcome.
+**Result.** Negative. The full run (`./lineage 4`, 4 threads, 1 h 46 min
+in the container) found no generator, seed, word width, derivation or skip
+in any of the 15 families that reproduces puzzles 1 to 32: every 32 bit
+seed of Java `Random`, MSVC and BSD `rand()`, minstd, xorshift32,
+xorshift64*, splitmix64, PCG32 and glibc `random()`, and seeds 0..2^26 plus
+every second of 2013 to 2016 for MT19937 (`init_genrand` and
+`init_by_array`, which covers Python's `random.seed(int)` and numpy) and
+MT19937-64. What this does not rule out: string or hashed seeds, seeds
+outside 32 bits (`random.seed()` with no argument draws 32 bytes from the
+OS), per key reseeding, `os.urandom` and other true entropy, and the
+derivations not in the list. The creator's own account ("random keys")
+with an OS entropy source remains the simplest explanation.
 
 ### 4. Unknown parameter recurrence fit (`lcgfit.cpp`, `make lcgfit`)
 
