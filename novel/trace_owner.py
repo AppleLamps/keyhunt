@@ -99,4 +99,7 @@ for a, rs in roles.items():
 rows.sort(key=lambda r: r[1])
 for a, rs, f, s, bal, pub in rows:
     print(f"  {a:44s} funded {f:3d} spent {s:3d} balance {bal:12.8f}  pubkey {('exposed ' + pub[:12] + '..') if pub else 'not exposed'}\n      roles: {rs[:3]}{' ...' if len(rs) > 3 else ''}")
-json.dump([{"address": a, "roles": rs, "funded": f, "spent": s, "balance": bal, "pubkey": pub} for a, rs, f, s, bal, pub in rows], open("novel/owner_cluster.json", "w"), indent=1)
+# addresses with heavy traffic, and everything behind the 2015 custodial withdrawal, are services rather than the creator
+json.dump([{"address": a, "roles": rs, "funded": f, "spent": s, "balance": bal, "pubkey": pub,
+            "service_like": f > 100 or any("2015" in r and "ancestor" in r for r in rs)}
+           for a, rs, f, s, bal, pub in rows], open("novel/owner_cluster.json", "w"), indent=1)
