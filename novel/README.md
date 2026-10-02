@@ -158,15 +158,16 @@ generator, so uniformity does not rule this out; only a direct search does.
 `random()`, MSVC and BSD `rand()`, minstd, xorshift32, xorshift64*,
 splitmix64, PCG32, MT19937 through `init_genrand` and through
 `init_by_array` (which is what Python's `random.seed(int)` and numpy use),
-MT19937-64. Seed spaces: every 32 bit seed for the cheap generators, and
-0..2^26 plus every second of 2013 to 2016 for the Mersenne Twister family.
-Derivations of an n bit key from the stream, all forcing the top bit as the
+MT19937-64. Derivations of an n bit key from the stream, all forcing the top bit as the
 puzzle does: low n-1 bits of one word, high n-1 bits of one word, a
 continuous bit stream, rejection of n bit words until the top bit is set,
 Python's `getrandbits(n-1)`, Python's `randrange(2^(n-1), 2^n)`; each with
-32 or 64 bit words and with 0 or 1 unused outputs between puzzles. A match
-on puzzles 1 to 32 is reported with the seed. The harness is validated by
-planting keys from Java `Random(12345)` and recovering that seed.
+32 or 64 bit words and with 0 or 1 unused outputs between puzzles. Seed
+spaces: every 32 bit seed for every family except the Mersenne Twisters
+(a 624 word initialisation per seed), which get 0..2^26 plus every second
+of 2013 to 2016. A match on puzzles 1 to 32 is reported with the seed.
+`./lineage selftest` (part of `make test`) plants keys from six known
+seed and derivation combinations and must recover them all.
 
 **Result.** Pending: the run is in progress and this line is replaced by
 its outcome.
@@ -177,7 +178,9 @@ its outcome.
 are known. This one asks whether the keys are an affine recurrence modulo
 2^64 with *any* multiplier, increment and seed (`s' = a*s + c`, order 1, or
 `s' = a*s + b*s'' + c`, order 2), with the key being the low bits of an
-output and up to three unused outputs between puzzles. There is no seed
+output and up to three unused outputs between puzzles. Puzzles 1 to 65 are
+used: puzzle 65 contributes the low 64 bits of its output, which is what
+pins the top bit of a modulo 2^64 candidate. There is no seed
 space to enumerate: modulo 2^j the recurrence involves only the low j bits
 of its parameters, and puzzle n reveals the low n-1 bits of its output, so
 the parameters are lifted one bit at a time from the bottom, discarding

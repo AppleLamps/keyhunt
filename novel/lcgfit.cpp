@@ -18,12 +18,13 @@
  * Validated by planting keys from a random LCG and recovering (a, c, s_1).
  */
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <vector>
 #include "known_keys.h"
 
-static const int NMAX = 64;             // consecutive known puzzles 1..64 (keys fit in 64 bits)
+static const int NMAX = 65;             // consecutive known puzzles 1..65; puzzle 65 gives the low 64 bits of its output
 static uint64_t out[NMAX + 1];           // low n-1 bits of output n (key_n - 2^(n-1))
 static int known_bits[NMAX + 1];         // n-1
 
@@ -35,7 +36,7 @@ static inline bool check1(const Cand1 &x, int bits, int stride) {
   uint64_t s = x.s; int idx = 1;
   for (int n = 1; n <= NMAX; n++) {
     int need = known_bits[n] < bits ? known_bits[n] : bits;
-    if (need > 0) { uint64_t m = (1ULL << need) - 1; if (((s - out[n]) & m) != 0) return false; }
+    if (need > 0) { uint64_t m = need >= 64 ? ~0ULL : (1ULL << need) - 1; if (((s - out[n]) & m) != 0) return false; }
     if (n == NMAX) break;
     int target = 1 + n * stride;
     while (idx < target) { s = (x.a * s + x.c) & mask; idx++; }
@@ -47,7 +48,7 @@ static inline bool check2(const Cand2 &x, int bits, int stride) {
   uint64_t p = x.s1, q = x.s2; int idx = 1;   // p = s_idx, q = s_{idx+1}
   for (int n = 1; n <= NMAX; n++) {
     int need = known_bits[n] < bits ? known_bits[n] : bits;
-    if (need > 0) { uint64_t m = (1ULL << need) - 1; if (((p - out[n]) & m) != 0) return false; }
+    if (need > 0) { uint64_t m = need >= 64 ? ~0ULL : (1ULL << need) - 1; if (((p - out[n]) & m) != 0) return false; }
     if (n == NMAX) break;
     int target = 1 + n * stride;
     while (idx < target) { uint64_t r = (x.a * q + x.b * p + x.c) & mask; p = q; q = r; idx++; }
@@ -91,11 +92,17 @@ static int fit2(int stride, bool verbose) {
   return (int)cur.size();
 }
 
+// low 64 bits of a hex string (the forced top bit of puzzle 65 is beyond them)
+static uint64_t low64(const char *hex) {
+  size_t L = strlen(hex);
+  return strtoull(L > 16 ? hex + (L - 16) : hex, NULL, 16);
+}
 static void load_known() {
   for (int i = 0; i < KNOWN_KEYS_N; i++) {
     int n = KNOWN_KEYS[i].bits; if (n > NMAX) continue;
-    uint64_t k = strtoull(KNOWN_KEYS[i].hex, NULL, 16);
-    out[n] = k - (1ULL << (n - 1)); known_bits[n] = n - 1;
+    uint64_t k = low64(KNOWN_KEYS[i].hex);
+    known_bits[n] = n - 1 > 64 ? 64 : n - 1;
+    out[n] = n - 1 >= 64 ? k : k - (1ULL << (n - 1));
   }
 }
 
@@ -106,7 +113,7 @@ int main(int argc, char **argv) {
     // plant: random odd a, random c, random seed, stride 2, order 1
     uint64_t a = 0x5851F42D4C957F2DULL | 1, c = 0x14057B7EF767814FULL, s = 0xDEADBEEFCAFEF00DULL;
     uint64_t st = s; int idx = 1;
-    for (int n = 1; n <= NMAX; n++) { out[n] = st & ((1ULL << (n - 1)) - 1); known_bits[n] = n - 1; int t = 1 + n * 2; while (idx < t) { st = a * st + c; idx++; } }
+    for (int n = 1; n <= NMAX; n++) { known_bits[n] = n - 1 > 64 ? 64 : n - 1; out[n] = known_bits[n] >= 64 ? st : st & ((1ULL << known_bits[n]) - 1); int t = 1 + n * 2; while (idx < t) { st = a * st + c; idx++; } }
     printf("[self test] planted a=0x%llx c=0x%llx s1=0x%llx stride 2\n", (unsigned long long)a, (unsigned long long)c, (unsigned long long)s);
     int r = fit1(2, false);
     printf("[self test] %s\n", r > 0 ? "recovered" : "FAILED");
@@ -114,14 +121,17 @@ int main(int argc, char **argv) {
   }
   load_known();
   printf("[+] unknown parameter LCG fit over puzzles 1..%d (low bits derivation)\n", NMAX);
-  int any = 0;
+  int any = 0, undecided = 0;
   for (int stride = 1; stride <= 4; stride++) {
     int r1 = fit1(stride, verbose);
     printf("[-] order 1, stride %d: %s\n", stride, r1 > 0 ? "FIT FOUND" : r1 == 0 ? "no LCG fits (candidates died out)" : "undecided");
     int r2 = fit2(stride, verbose);
     printf("[-] order 2, stride %d: %s\n", stride, r2 > 0 ? "FIT FOUND" : r2 == 0 ? "no recurrence fits (candidates died out)" : "undecided");
     any |= (r1 > 0) | (r2 > 0);
+    undecided |= (r1 < 0) | (r2 < 0);
   }
-  printf("[+] %s\n", any ? "SOMETHING FITS: verify against the keys above 70" : "no linear congruential recurrence of order 1 or 2 (mod 2^64, strides 1..4) generates the puzzle keys");
-  return 0;
+  if (any) printf("[+] SOMETHING FITS puzzles 1..%d: verify it against the known keys from puzzle %d on before believing it\n", NMAX, NMAX + 1);
+  else if (undecided) printf("[?] no fit found, but at least one search ran out of constraints before deciding: not conclusive\n");
+  else printf("[+] no linear congruential recurrence of order 1 or 2 (mod 2^64, strides 1..4) generates the puzzle keys\n");
+  return any ? 0 : (undecided ? 2 : 0);
 }

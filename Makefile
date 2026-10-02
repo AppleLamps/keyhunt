@@ -185,12 +185,13 @@ $(BUILD)/test_int: $(BUILD)/tests/test_int.o $(TEST_HASH_OBJS)
 	@echo "  LD    $@"
 	$(Q)$(CXX) $(MAIN_CXXFLAGS) -o $@ $^ $(LDLIBS)
 
-test: keyhunt kangaroo lcgfit $(TEST_BINS)
+test: keyhunt kangaroo lcgfit lineage $(TEST_BINS)
 	@$(BUILD)/test_hash160
 	@$(BUILD)/test_int
 	@sh tests/run_tests.sh ./keyhunt
 	@sh tests/test_kangaroo.sh ./kangaroo
-	@./lcgfit s | tail -1
+	@./lcgfit s > /dev/null && echo "[ok]   lcgfit self test"
+	@./lineage selftest 2 > /dev/null && echo "[ok]   lineage self test"
 
 clean:
 	rm -rf $(BUILD) keyhunt bsgsd kangaroo lineage lcgfit

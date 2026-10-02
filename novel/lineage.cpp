@@ -10,8 +10,9 @@
  * Families: Java Random (48 bit LCG), glibc random() TYPE_3, MSVC rand, BSD
  * rand (TYPE_0), minstd, xorshift32, xorshift64*, splitmix64, PCG32, MT19937 via
  * init_genrand and via init_by_array (Python's random.seed(int), numpy),
- * MT19937-64. Seed spaces: all 32 bit seeds for the cheap generators; 0..2^26
- * plus the Unix time window 2013-01-01..2017-01-01 (seconds) for the MT family.
+ * MT19937-64. Seed spaces: all 32 bit seeds for every family except the
+ * Mersenne Twisters (624 word initialisation per seed), which get 0..2^26 plus
+ * the Unix time window 2013-01-01..2017-01-01 (seconds).
  *
  * Derivations of an n bit key from the stream (all force the top bit, as the
  * puzzle does): one word per puzzle taking the low n-1 bits; one word per
@@ -20,7 +21,8 @@
  * randrange(2^(n-1), 2^n). Each with 0 or 1 unused outputs between puzzles.
  *
  * A match on the first 32 puzzles is reported with the seed; it is then checked
- * against every known key. Usage: lineage [threads]
+ * against every known key. Usage: lineage [threads]; lineage selftest [threads]
+ * plants keys from known seeds and derivations and must recover them all.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,7 +37,8 @@
 
 static const int NTEST = 32;          // puzzles used for the search (keys fit in 64 bits)
 static uint64_t target[NTEST + 1];    // target[n] = key of puzzle n
-static std::atomic<uint64_t> hits(0);
+static std::atomic<uint64_t> hits(0);        // total
+static std::atomic<uint64_t> search_hits(0); // current search
 
 // ---- generators: each has reset(seed) and next32() / next64() ----------------
 struct JavaRandom {
@@ -62,27 +65,26 @@ struct BsdRand {    // TYPE_0: state*1103515245+12345, 31 bit output
 };
 struct Minstd {     // 48271 mod 2^31-1
   uint32_t s;
-  void reset(uint64_t seed) { s = (uint32_t)(seed % 2147483646u) + 1; }
+  void reset(uint64_t seed) { s = (uint32_t)(seed % 2147483647u); if (s == 0) s = 1; }
   uint32_t next32() { s = (uint32_t)(((uint64_t)s * 48271u) % 2147483647u); return s; }
   uint64_t next64() { return ((uint64_t)next32() << 32) | next32(); }
   int bits() { return 31; }
 };
-struct GlibcRandom {  // random() TYPE_3 with srandom(seed)
-  int32_t r[34 + 1000]; int idx;
+struct GlibcRandom {  // random() TYPE_3 with srandom(seed); the state update wraps mod 2^32
+  uint32_t r[34 + 1000]; int idx;
   void reset(uint64_t seed) {
     int32_t s = (int32_t)(uint32_t)seed; if (s == 0) s = 1;
-    r[0] = s;
-    for (int i = 1; i < 31; i++) { int64_t hi = r[i-1] / 127773, lo = r[i-1] % 127773; int64_t w = 16807 * lo - 2836 * hi; if (w < 0) w += 2147483647; r[i] = (int32_t)w; }
+    r[0] = (uint32_t)s;
+    for (int i = 1; i < 31; i++) { int64_t prev = (int32_t)r[i-1]; int64_t hi = prev / 127773, lo = prev % 127773; int64_t w = 16807 * lo - 2836 * hi; if (w < 0) w += 2147483647; r[i] = (uint32_t)w; }
     for (int i = 31; i < 34; i++) r[i] = r[i-31];
     idx = 34;
     for (int i = 34; i < 344; i++) step();     // discard 310
   }
-  int32_t step() { int32_t v = r[idx-31] + r[idx-3]; // use a ring of 34
-    // keep ring small: shift when needed
+  uint32_t step() { uint32_t v = r[idx-31] + r[idx-3];
     r[idx] = v; idx++;
-    if (idx >= 34 + 1000) { memmove(r, r + idx - 34, 34 * sizeof(int32_t)); idx = 34; }
+    if (idx >= 34 + 1000) { memmove(r, r + idx - 34, 34 * sizeof(uint32_t)); idx = 34; }
     return v; }
-  uint32_t next32() { return ((uint32_t)step()) >> 1; }
+  uint32_t next32() { return step() >> 1; }
   uint64_t next64() { return ((uint64_t)next32() << 32) | next32(); }
   int bits() { return 31; }
 };
@@ -201,7 +203,7 @@ template <class G, int WB> static bool try_seed(Stream<G, WB> &st, Conv c, int s
     int k = n - 1; uint64_t top = 1ULL << k, mask = top - 1, key;
     switch (c) {
       case LOW:   key = top + (st.word() & mask); break;
-      case HIGH:  key = top + (k == 0 ? 0 : (st.word() >> (st.B - k)) & mask); break;
+      case HIGH:  { if (k > st.B) return false; uint64_t w = st.word(); key = top + (k == 0 ? 0 : (w >> (st.B - k)) & mask); break; }
       case STREAM: key = top + (k ? st.bits(k) : 0); break;
       case REJECT: { int tries = 0; do { key = st.word() & ((top << 1) - 1); if (++tries > 64) return false; } while (key < top); break; }
       case PYBITS: key = top + (k ? st.pybits(k) : 0); break;
@@ -216,6 +218,7 @@ template <class G, int WB> static bool try_seed(Stream<G, WB> &st, Conv c, int s
 
 template <class G, int WB> static void search_w(const char *name, uint64_t lo, uint64_t hi, int threads, bool by_array) {
   std::atomic<uint64_t> next(lo);
+  search_hits = 0;
   std::vector<std::thread> th;
   for (int t = 0; t < threads; t++) th.emplace_back([&]() {
     Stream<G, WB> st; (void)by_array;
@@ -229,7 +232,7 @@ template <class G, int WB> static void search_w(const char *name, uint64_t lo, u
           if ((c == PYBITS || c == PYRANGE) && !(std::is_same<G, MT19937>::value && WB == 32)) continue;
           for (int skip = 0; skip < 2; skip++)
             if (try_seed(st, (Conv)c, skip)) {
-              hits++;
+              hits++; search_hits++;
               printf("\n[!!!] MATCH on the first %d puzzles: %s seed=%llu (0x%llx) words=%d bit derivation='%s' skip=%d\n", NTEST, name, (unsigned long long)s, (unsigned long long)s, WB, conv_name[c], skip);
               fflush(stdout);
             }
@@ -238,7 +241,7 @@ template <class G, int WB> static void search_w(const char *name, uint64_t lo, u
     }
   });
   for (auto &x : th) x.join();
-  printf("[-] %-56s %2d bit words, seeds %llu..%llu: %s\n", name, WB, (unsigned long long)lo, (unsigned long long)hi, hits ? "see matches above" : "no match");
+  printf("[-] %-56s %2d bit words, seeds %llu..%llu: %s\n", name, WB, (unsigned long long)lo, (unsigned long long)hi, search_hits ? "MATCH, see above" : "no match");
   fflush(stdout);
 }
 template <class G> static void search(const char *name, uint64_t lo, uint64_t hi, int threads, bool by_array = false) {
@@ -246,7 +249,56 @@ template <class G> static void search(const char *name, uint64_t lo, uint64_t hi
   search_w<G, 64>(name, lo, hi, threads, by_array);
 }
 
+// Self test: plant keys from known seeds and derivations, search a small seed
+// range, and require every plant to be recovered.
+static int selftest(int threads) {
+  struct Plant { const char *name; int family; uint64_t seed; int wb; Conv conv; int skip; };
+  Plant plants[] = {
+    { "java nextLong low bits",        0, 12345, 64, LOW, 0 },
+    { "java nextInt high bits",        0, 777,   32, HIGH, 1 },
+    { "minstd bit stream",             1, 4242,  32, STREAM, 0 },
+    { "glibc random() low bits",       2, 1999,  32, LOW,    0 },
+    { "python getrandbits (MT by array)", 3, 31337, 32, PYBITS, 0 },
+    { "python randrange (MT by array)", 3, 2015,  32, PYRANGE, 0 },
+  };
+  int failed = 0;
+  for (auto &pl : plants) {
+    // produce the keys with the same code path the search uses
+    auto gen = [&](auto &st) { st.reset(pl.seed); st.rewind();
+      for (int n = 1; n <= NTEST; n++) {
+        int k = n - 1; uint64_t top = 1ULL << k, mask = top - 1, key = 0;
+        switch (pl.conv) {
+          case LOW: key = top + (st.word() & mask); break;
+          case HIGH: { uint64_t w = st.word(); key = top + (k == 0 ? 0 : (w >> (st.B - k)) & mask); break; }
+          case STREAM: key = top + (k ? st.bits(k) : 0); break;
+          case REJECT: { int tries = 0; do { key = st.word() & ((top << 1) - 1); if (++tries > 64) { fprintf(stderr, "plant: REJECT infeasible for %s\n", pl.name); exit(1); } } while (key < top); break; }
+          case PYBITS: key = top + (k ? st.pybits(k) : 0); break;
+          case PYRANGE: { int tries = 0; do { key = st.pybits(n); if (++tries > 64) { fprintf(stderr, "plant: PYRANGE infeasible for %s\n", pl.name); exit(1); } } while (key >= top); key += top; break; }
+          default: break;
+        }
+        target[n] = key;
+        for (int q = 0; q < pl.skip; q++) st.word();
+      } };
+    if (pl.family == 0 && pl.wb == 64) { Stream<JavaRandom, 64> st; gen(st); }
+    if (pl.family == 0 && pl.wb == 32) { Stream<JavaRandom, 32> st; gen(st); }
+    if (pl.family == 1) { Stream<Minstd, 32> st; gen(st); }
+    if (pl.family == 2) { Stream<GlibcRandom, 32> st; gen(st); }
+    if (pl.family == 3) { Stream<MT19937, 32> st; st.g.by_array = true; gen(st); }
+    hits = 0;
+    uint64_t lo = pl.seed > 1000 ? pl.seed - 1000 : 0, hi = pl.seed + 1000;
+    if (pl.family == 0) search<JavaRandom>("self test java", lo, hi, threads);
+    if (pl.family == 1) search<Minstd>("self test minstd", lo, hi, threads);
+    if (pl.family == 2) search<GlibcRandom>("self test glibc", lo, hi, threads);
+    if (pl.family == 3) search<MT19937>("self test MT by array", lo, hi, threads, true);
+    printf("[self test] %-36s %s\n", pl.name, hits ? "recovered" : "FAILED");
+    if (!hits) failed++;
+  }
+  printf("[self test] %s\n", failed ? "FAILED" : "all plants recovered");
+  return failed ? 1 : 0;
+}
+
 int main(int argc, char **argv) {
+  if (argc > 1 && strcmp(argv[1], "selftest") == 0) return selftest(argc > 2 ? atoi(argv[2]) : 4);
   int threads = argc > 1 ? atoi(argv[1]) : 4;
   for (int i = 0; i < KNOWN_KEYS_N && KNOWN_KEYS[i].bits <= NTEST; i++)
     target[KNOWN_KEYS[i].bits] = strtoull(KNOWN_KEYS[i].hex, NULL, 16);
@@ -260,8 +312,7 @@ int main(int argc, char **argv) {
   search<Xorshift64s>("xorshift64* (32 bit seeds)", 0, 1ULL << 32, threads);
   search<Splitmix64>("splitmix64 (32 bit seeds)", 0, 1ULL << 32, threads);
   search<Pcg32>("pcg32 (32 bit seeds)", 0, 1ULL << 32, threads);
-  search<GlibcRandom>("glibc random() (time window)", T0, T1, threads);
-  search<GlibcRandom>("glibc random() (small seeds)", 0, 1ULL << 26, threads);
+  search<GlibcRandom>("glibc random()", 0, 1ULL << 32, threads);
   search<MT19937>("MT19937 init_genrand (small seeds)", 0, 1ULL << 26, threads);
   search<MT19937>("MT19937 init_genrand (time window)", T0, T1, threads);
   search<MT19937>("MT19937 init_by_array = python/numpy seed(int) (small seeds)", 0, 1ULL << 26, threads, true);
