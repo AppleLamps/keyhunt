@@ -94,8 +94,11 @@ cd keyhunt
 First compile:
 
 ```
-make
+make -j$(nproc)
 ```
+
+Other targets and options: `make bsgsd`, `make legacy`, `make test` (runs the test suite), `make clean`, `make ARCH=x86-64-v3` to build for a specific CPU instead of the build machine, `make LTO=1`, `make SANITIZE=1`.
+On CPUs with AVX2 the address and rmd160 modes pick the 8-way hash kernels automatically at runtime.
 
 if you have problems compiling the `main` version you can compile the `legacy` version
 

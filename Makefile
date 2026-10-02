@@ -1,61 +1,169 @@
-default:
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -ftree-vectorize -flto -c oldbloom/bloom.cpp -o oldbloom.o
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -ftree-vectorize -flto -c bloom/bloom.cpp -o bloom.o
-	gcc -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-unused-parameter -Ofast -ftree-vectorize -c base58/base58.c -o base58.o
-	gcc -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Ofast -ftree-vectorize -c rmd160/rmd160.c -o rmd160.o
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -ftree-vectorize -c sha3/sha3.c -o sha3.o
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -ftree-vectorize -c sha3/keccak.c -o keccak.o
-	gcc -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Ofast -ftree-vectorize -c xxhash/xxhash.c -o xxhash.o
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -ftree-vectorize -c util.c -o util.o
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -ftree-vectorize -c secp256k1/Int.cpp -o Int.o
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -ftree-vectorize -c secp256k1/Point.cpp -o Point.o
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -ftree-vectorize -c secp256k1/SECP256K1.cpp -o SECP256K1.o
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -ftree-vectorize -c secp256k1/IntMod.cpp -o IntMod.o
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -ftree-vectorize -flto -c secp256k1/Random.cpp -o Random.o
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -ftree-vectorize -flto -c secp256k1/IntGroup.cpp -o IntGroup.o
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -o hash/ripemd160.o -ftree-vectorize -flto -c hash/ripemd160.cpp
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -o hash/sha256.o -ftree-vectorize -flto -c hash/sha256.cpp
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -o hash/ripemd160_sse.o -ftree-vectorize -flto -c hash/ripemd160_sse.cpp
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -o hash/sha256_sse.o -ftree-vectorize -flto -c hash/sha256_sse.cpp
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -ftree-vectorize -o keyhunt keyhunt.cpp base58.o rmd160.o hash/ripemd160.o hash/ripemd160_sse.o hash/sha256.o hash/sha256_sse.o bloom.o oldbloom.o xxhash.o util.o Int.o  Point.o SECP256K1.o  IntMod.o  Random.o IntGroup.o sha3.o keccak.o  -lm -lpthread
-	rm -r *.o
+# keyhunt build
+#
+#   make                 build ./keyhunt
+#   make bsgsd           build ./bsgsd (BSGS server, Linux only)
+#   make legacy          build ./keyhunt from keyhunt_legacy.cpp (needs libssl-dev, libgmp-dev;
+#                        for CPUs/systems without SSE, e.g. ARM)
+#   make test            build and run the test suite
+#   make clean
+#
+# Useful knobs:
+#   make -j$(nproc)      parallel build
+#   make ARCH=x86-64-v3  target a specific CPU instead of the build machine (default: native)
+#   make LTO=1           link time optimisation
+#   make DEBUG=1         -O0 -g, no -march=native
+#   make SANITIZE=1      build with ASan + UBSan
+#   make V=1             show the full compiler command lines
+
+CC  ?= gcc
+CXX ?= g++
+
+ARCH  ?= native
+BUILD ?= build
+
+MACHINE := $(shell $(CC) -dumpmachine 2>/dev/null)
+ifneq (,$(filter x86_64% i%86%,$(MACHINE)))
+  X86 := 1
+endif
+
+ifdef DEBUG
+  OPTFLAGS := -O0 -g
+else
+  OPTFLAGS := -O3 -ftree-vectorize
+  ifdef X86
+    OPTFLAGS += -march=$(ARCH) -mtune=$(if $(filter native,$(ARCH)),native,generic)
+  else
+    OPTFLAGS += -mcpu=$(ARCH)
+  endif
+endif
+ifdef X86
+  # SSSE3 is the baseline of the 4-way SSE hash kernels. Only the main/bsgsd
+  # objects get it: the legacy build is meant for CPUs without that baseline.
+  SIMDFLAGS := -mssse3
+endif
+ifdef LTO
+  OPTFLAGS += -flto
+endif
+ifdef SANITIZE
+  OPTFLAGS += -fsanitize=address,undefined -fno-omit-frame-pointer -g
+endif
+
+WARN     := -Wall -Wextra
+CFLAGS   := $(OPTFLAGS) $(WARN) -Wno-unused-parameter -MMD -MP
+CXXFLAGS := $(OPTFLAGS) $(WARN) -Wno-deprecated-copy -std=gnu++17 -MMD -MP
+MAIN_CFLAGS   := $(CFLAGS) $(SIMDFLAGS)
+MAIN_CXXFLAGS := $(CXXFLAGS) $(SIMDFLAGS)
+LDLIBS   := -lm -lpthread
+
+ifeq ($(V),1)
+  Q :=
+else
+  Q := @
+endif
+
+# Plain C sources
+C_SRCS   := base58/base58.c rmd160/rmd160.c xxhash/xxhash.c
+# These ".c" files are written as C++ and always have been compiled as such
+CXXC_SRCS := util.c sha3/sha3.c sha3/keccak.c
+CXX_SRCS := oldbloom/bloom.cpp bloom/bloom.cpp \
+            secp256k1/Int.cpp secp256k1/Point.cpp secp256k1/SECP256K1.cpp \
+            secp256k1/IntMod.cpp secp256k1/Random.cpp secp256k1/IntGroup.cpp \
+            hash/ripemd160.cpp hash/sha256.cpp hash/ripemd160_sse.cpp hash/sha256_sse.cpp \
+            hash/hash160_avx2.cpp
+
+COMMON_OBJS := $(addprefix $(BUILD)/,$(C_SRCS:.c=.o) $(CXXC_SRCS:.c=.o) $(CXX_SRCS:.cpp=.o))
+
+# Sources of the legacy (libgmp / OpenSSL) variant
+LEGACY_SRCS := oldbloom/bloom.cpp bloom/bloom.cpp \
+               gmp256k1/Int.cpp gmp256k1/Point.cpp gmp256k1/GMP256K1.cpp \
+               gmp256k1/IntMod.cpp gmp256k1/Random.cpp gmp256k1/IntGroup.cpp
+LEGACY_CXXC := util.c sha3/sha3.c sha3/keccak.c hashing.c
+LEGACY_OBJS := $(addprefix $(BUILD)/legacy/,base58/base58.o xxhash/xxhash.o \
+               $(LEGACY_SRCS:.cpp=.o) $(LEGACY_CXXC:.c=.o))
+
+# Make only compares timestamps, so record the compiler and flags in a stamp
+# file that every object depends on; changing ARCH/LTO/DEBUG/SANITIZE/... then
+# rebuilds instead of silently reusing incompatible objects.
+STAMP := $(BUILD)/.config
+CONFIG := $(CC) $(CXX) $(MAIN_CFLAGS) $(MAIN_CXXFLAGS) $(LDLIBS)
+$(shell mkdir -p $(BUILD); echo '$(CONFIG)' | cmp -s - $(STAMP) || echo '$(CONFIG)' > $(STAMP))
+
+.PHONY: default all clean legacy bsgsd keyhunt test
+default: all
+all: keyhunt
+
+# The variants are linked under build/ and copied to the top level, so building
+# one after the other always refreshes ./keyhunt (it is the same output name).
+keyhunt: $(BUILD)/keyhunt.bin
+	@cp -f $< $@
+
+bsgsd: $(BUILD)/bsgsd.bin
+	@cp -f $< $@
+
+legacy: $(BUILD)/keyhunt-legacy.bin
+	@cp -f $< keyhunt
+
+$(BUILD)/keyhunt.bin: $(BUILD)/keyhunt.o $(COMMON_OBJS)
+	@echo "  LD    keyhunt"
+	$(Q)$(CXX) $(MAIN_CXXFLAGS) -o $@ $^ $(LDLIBS)
+
+$(BUILD)/bsgsd.bin: $(BUILD)/bsgsd.o $(COMMON_OBJS)
+	@echo "  LD    bsgsd"
+	$(Q)$(CXX) $(MAIN_CXXFLAGS) -o $@ $^ $(LDLIBS)
+
+$(BUILD)/keyhunt-legacy.bin: $(BUILD)/legacy/keyhunt_legacy.o $(LEGACY_OBJS)
+	@echo "  LD    keyhunt (legacy)"
+	$(Q)$(CXX) $(CXXFLAGS) -o $@ $^ $(LDLIBS) -lcrypto -lgmp
+
+# ---- compile rules ----------------------------------------------------------
+
+$(BUILD)/%.o: %.cpp $(STAMP)
+	@mkdir -p $(dir $@)
+	@echo "  CXX   $<"
+	$(Q)$(CXX) $(MAIN_CXXFLAGS) -c $< -o $@
+
+$(addprefix $(BUILD)/,$(CXXC_SRCS:.c=.o)): $(BUILD)/%.o: %.c $(STAMP)
+	@mkdir -p $(dir $@)
+	@echo "  CXX   $<"
+	$(Q)$(CXX) $(MAIN_CXXFLAGS) -x c++ -c $< -o $@
+
+$(addprefix $(BUILD)/,$(C_SRCS:.c=.o)): $(BUILD)/%.o: %.c $(STAMP)
+	@mkdir -p $(dir $@)
+	@echo "  CC    $<"
+	$(Q)$(CC) $(MAIN_CFLAGS) -c $< -o $@
+
+# Legacy objects (separate directory: same file names, different flags/sources, no SSSE3)
+$(BUILD)/legacy/%.o: %.cpp $(STAMP)
+	@mkdir -p $(dir $@)
+	@echo "  CXX   $<"
+	$(Q)$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(addprefix $(BUILD)/legacy/,$(LEGACY_CXXC:.c=.o)): $(BUILD)/legacy/%.o: %.c $(STAMP)
+	@mkdir -p $(dir $@)
+	@echo "  CXX   $<"
+	$(Q)$(CXX) $(CXXFLAGS) -x c++ -c $< -o $@
+
+$(BUILD)/legacy/base58/base58.o $(BUILD)/legacy/xxhash/xxhash.o: $(BUILD)/legacy/%.o: %.c $(STAMP)
+	@mkdir -p $(dir $@)
+	@echo "  CC    $<"
+	$(Q)$(CC) $(CFLAGS) -Wno-unused-result -c $< -o $@
+
+# ---- tests ------------------------------------------------------------------
+
+TEST_BINS := $(BUILD)/test_hash160
+TEST_HASH_OBJS := $(addprefix $(BUILD)/hash/,hash160_avx2.o sha256.o ripemd160.o ripemd160_sse.o sha256_sse.o) \
+                  $(addprefix $(BUILD)/secp256k1/,Int.o Point.o SECP256K1.o IntMod.o Random.o IntGroup.o) \
+                  $(BUILD)/util.o
+
+$(BUILD)/test_hash160: $(BUILD)/tests/test_hash160.o $(TEST_HASH_OBJS)
+	@echo "  LD    $@"
+	$(Q)$(CXX) $(MAIN_CXXFLAGS) -o $@ $^ $(LDLIBS)
+
+test: keyhunt $(TEST_BINS)
+	@$(BUILD)/test_hash160
+	@sh tests/run_tests.sh ./keyhunt
+
 clean:
-	rm keyhunt
-legacy:
-	g++ -march=native -mtune=native -Wall -Wextra -Ofast -ftree-vectorize -flto -c oldbloom/bloom.cpp -o oldbloom.o
-	g++ -march=native -mtune=native -Wall -Wextra -Ofast -ftree-vectorize -flto -c bloom/bloom.cpp -o bloom.o
-	gcc -march=native -mtune=native -Wno-unused-result -Ofast -ftree-vectorize -c base58/base58.c -o base58.o
-	gcc -march=native -mtune=native -Wall -Wextra -Ofast -ftree-vectorize -c xxhash/xxhash.c -o xxhash.o
-	g++ -march=native -mtune=native -Wall -Wextra -Ofast -ftree-vectorize -c util.c -o util.o
-	g++ -march=native -mtune=native -Wall -Wextra -Ofast -ftree-vectorize -c sha3/sha3.c -o sha3.o
-	g++ -march=native -mtune=native -Wall -Wextra -Ofast -ftree-vectorize -c sha3/keccak.c -o keccak.o
-	g++ -march=native -mtune=native -Wall -Wextra -Ofast -ftree-vectorize -c hashing.c -o hashing.o
-	g++ -march=native -mtune=native -Wall -Wextra -Ofast -ftree-vectorize -c gmp256k1/Int.cpp -o Int.o
-	g++ -march=native -mtune=native -Wall -Wextra -Ofast -ftree-vectorize -c gmp256k1/Point.cpp -o Point.o
-	g++ -march=native -mtune=native -Wall -Wextra -Ofast -ftree-vectorize -c gmp256k1/GMP256K1.cpp -o GMP256K1.o
-	g++ -march=native -mtune=native -Wall -Wextra -Ofast -ftree-vectorize -c gmp256k1/IntMod.cpp -o IntMod.o
-	g++ -march=native -mtune=native -Wall -Wextra -Ofast -ftree-vectorize -flto -c gmp256k1/Random.cpp -o Random.o
-	g++ -march=native -mtune=native -Wall -Wextra -Ofast -ftree-vectorize -flto -c gmp256k1/IntGroup.cpp -o IntGroup.o
-	g++ -march=native -mtune=native -Wall -Wextra -Ofast -ftree-vectorize -o keyhunt keyhunt_legacy.cpp base58.o bloom.o oldbloom.o xxhash.o util.o Int.o  Point.o GMP256K1.o  IntMod.o  IntGroup.o Random.o hashing.o sha3.o keccak.o -lm -lpthread -lcrypto -lgmp	
-	rm -r *.o
-bsgsd:
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -ftree-vectorize -flto -c oldbloom/bloom.cpp -o oldbloom.o
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -ftree-vectorize -flto -c bloom/bloom.cpp -o bloom.o
-	gcc -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-unused-parameter -Ofast -ftree-vectorize -c base58/base58.c -o base58.o
-	gcc -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Ofast -ftree-vectorize -c rmd160/rmd160.c -o rmd160.o
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -ftree-vectorize -c sha3/sha3.c -o sha3.o
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -ftree-vectorize -c sha3/keccak.c -o keccak.o
-	gcc -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Ofast -ftree-vectorize -c xxhash/xxhash.c -o xxhash.o
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -ftree-vectorize -c util.c -o util.o
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -ftree-vectorize -c secp256k1/Int.cpp -o Int.o
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -ftree-vectorize -c secp256k1/Point.cpp -o Point.o
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -ftree-vectorize -c secp256k1/SECP256K1.cpp -o SECP256K1.o
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -ftree-vectorize -c secp256k1/IntMod.cpp -o IntMod.o
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -ftree-vectorize -flto -c secp256k1/Random.cpp -o Random.o
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -ftree-vectorize -flto -c secp256k1/IntGroup.cpp -o IntGroup.o
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -o hash/ripemd160.o -ftree-vectorize -flto -c hash/ripemd160.cpp
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -o hash/sha256.o -ftree-vectorize -flto -c hash/sha256.cpp
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -o hash/ripemd160_sse.o -ftree-vectorize -flto -c hash/ripemd160_sse.cpp
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -o hash/sha256_sse.o -ftree-vectorize -flto -c hash/sha256_sse.cpp
-	g++ -m64 -march=native -mtune=native -mssse3 -Wall -Wextra -Wno-deprecated-copy -Ofast -ftree-vectorize -o bsgsd bsgsd.cpp base58.o rmd160.o hash/ripemd160.o hash/ripemd160_sse.o hash/sha256.o hash/sha256_sse.o bloom.o oldbloom.o xxhash.o util.o Int.o  Point.o SECP256K1.o  IntMod.o  Random.o IntGroup.o sha3.o keccak.o  -lm -lpthread
-	rm -r *.o
+	rm -rf $(BUILD) keyhunt bsgsd
+
+-include $(shell find $(BUILD) -name '*.d' 2>/dev/null)

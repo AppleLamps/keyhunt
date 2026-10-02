@@ -119,44 +119,44 @@ void tohex_dst(char *ptr,int length,char *dst)	{
   dst[length*2] = 0;
 }
 
-int hexs2bin(char *hex, unsigned char *out)	{
-	int len;
-	char   b1;
-	char   b2;
-	int i;
+// Hex digit value for each byte, -1 for anything that is not [0-9A-Fa-f]
+static const struct HexTable	{
+	signed char v[256];
+	constexpr HexTable() : v()	{
+		for(int i = 0; i < 256; i++)	{
+			v[i] = (i >= '0' && i <= '9') ? i - '0' : (i >= 'A' && i <= 'F') ? i - 'A' + 10 : (i >= 'a' && i <= 'f') ? i - 'a' + 10 : -1;
+		}
+	}
+} hextable;
 
+int hexs2bin(char *hex, unsigned char *out)	{
 	if (hex == NULL || *hex == '\0' || out == NULL)
 		return 0;
 
-	len = strlen(hex);
+	size_t len = strlen(hex);
 	if (len % 2 != 0)
 		return 0;
 	len /= 2;
 
 	memset(out, 'A', len);
-	for (i=0; i<len; i++) {
-		if (!hexchr2bin(hex[i*2], &b1) || !hexchr2bin(hex[i*2+1], &b2)) {
+	for (size_t i = 0; i < len; i++) {
+		int b1 = hextable.v[(unsigned char)hex[i*2]];
+		int b2 = hextable.v[(unsigned char)hex[i*2+1]];
+		if (b1 < 0 || b2 < 0) {
 			return 0;
 		}
-		out[i] = (b1 << 4) | b2;
+		out[i] = (unsigned char)((b1 << 4) | b2);
 	}
-	return len;
+	return (int)len;
 }
 
 int hexchr2bin(const char hex, char *out)	{
 	if (out == NULL)
 		return 0;
-
-	if (hex >= '0' && hex <= '9') {
-		*out = hex - '0';
-	} else if (hex >= 'A' && hex <= 'F') {
-		*out = hex - 'A' + 10;
-	} else if (hex >= 'a' && hex <= 'f') {
-		*out = hex - 'a' + 10;
-	} else {
+	int v = hextable.v[(unsigned char)hex];
+	if (v < 0)
 		return 0;
-	}
-
+	*out = (char)v;
 	return 1;
 }
 
@@ -167,12 +167,9 @@ void addItemList(char *data, List *l)	{
 }
 
 int isValidHex(char *data)	{
-	char c;
-	int len,i,valid = 1;
-	len = strlen(data);
-	for(i = 0 ; i <  len && valid ;i++ )	{
-		c = data[i];
-		valid = ( (c >= '0' && c <='9') || (c >= 'A' && c <='F' ) || (c >= 'a' && c <='f' ) );
+	for(const unsigned char *c = (const unsigned char*)data; *c; c++)	{
+		if(hextable.v[*c] < 0)
+			return 0;
 	}
-	return valid;
+	return 1;
 }

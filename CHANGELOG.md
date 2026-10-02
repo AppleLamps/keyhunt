@@ -1,3 +1,11 @@
+# Unreleased
+- New Makefile: incremental and parallel builds (`make -j`), objects in `build/`, `ARCH`, `LTO`, `DEBUG`, `SANITIZE` options, `make test`
+- 8-way AVX2 SHA256+RIPEMD160 (runtime detected) for address and rmd160 modes, about 1.5x faster; endomorphism, ETH and other modes keep the SSE path
+- Multi-threaded std::sort replaces the hand written sorts, table driven hex parsing (4M address file loads ~30% faster)
+- Fixed undefined behaviour reported by ASan/UBSan: out of bounds read in Int::Div, unaligned accesses, signed overflow in ModInv
+- Legacy build uses the OpenSSL 3 EVP API
+- Tests: `tests/run_tests.sh`, `tests/test_hash160.cpp`, GitHub Actions CI
+
 # Version 0.2.230519 Satoshi Quest
 - Speed x2 in BSGS mode for main version
 
