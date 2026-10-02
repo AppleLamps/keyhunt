@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential libgmp-dev libssl-dev
+      - name: Build keyhunt and bsgsd
+        run: make -j"$(nproc)" keyhunt bsgsd
+      - name: Test
+        run: make test
+      - name: Build legacy variant
+        run: make -j"$(nproc)" legacy BUILD=build-legacy
+
+  sanitizers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build with ASan + UBSan
+        run: make -j"$(nproc)" SANITIZE=1 BUILD=build-san keyhunt
+      - name: Run regression tests
+        env:
+          ASAN_OPTIONS: detect_leaks=0
+          UBSAN_OPTIONS: halt_on_error=1
+        run: sh tests/run_tests.sh ./keyhunt
