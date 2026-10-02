@@ -5,6 +5,7 @@
 #   make legacy          build ./keyhunt from keyhunt_legacy.cpp (needs libssl-dev, libgmp-dev;
 #                        for CPUs/systems without SSE, e.g. ARM)
 #   make test            build and run the test suite
+#   make kangaroo        build ./kangaroo (novel/, Pollard kangaroo with negation map)
 #   make clean
 #
 # Useful knobs:
@@ -88,7 +89,7 @@ STAMP := $(BUILD)/.config
 CONFIG := $(CC) $(CXX) $(MAIN_CFLAGS) $(MAIN_CXXFLAGS) $(LDLIBS)
 $(shell mkdir -p $(BUILD); echo '$(CONFIG)' | cmp -s - $(STAMP) || echo '$(CONFIG)' > $(STAMP))
 
-.PHONY: default all clean legacy bsgsd keyhunt test
+.PHONY: default all clean legacy bsgsd keyhunt kangaroo test
 default: all
 all: keyhunt
 
@@ -102,6 +103,13 @@ bsgsd: $(BUILD)/bsgsd.bin
 
 legacy: $(BUILD)/keyhunt-legacy.bin
 	@cp -f $< keyhunt
+
+kangaroo: $(BUILD)/kangaroo.bin
+	@cp -f $< $@
+
+$(BUILD)/kangaroo.bin: $(BUILD)/novel/kangaroo.o $(COMMON_OBJS)
+	@echo "  LD    kangaroo"
+	$(Q)$(CXX) $(MAIN_CXXFLAGS) -o $@ $^ $(LDLIBS)
 
 $(BUILD)/keyhunt.bin: $(BUILD)/keyhunt.o $(COMMON_OBJS)
 	@echo "  LD    keyhunt"
@@ -163,12 +171,13 @@ $(BUILD)/test_int: $(BUILD)/tests/test_int.o $(TEST_HASH_OBJS)
 	@echo "  LD    $@"
 	$(Q)$(CXX) $(MAIN_CXXFLAGS) -o $@ $^ $(LDLIBS)
 
-test: keyhunt $(TEST_BINS)
+test: keyhunt kangaroo $(TEST_BINS)
 	@$(BUILD)/test_hash160
 	@$(BUILD)/test_int
 	@sh tests/run_tests.sh ./keyhunt
+	@sh tests/test_kangaroo.sh ./kangaroo
 
 clean:
-	rm -rf $(BUILD) keyhunt bsgsd
+	rm -rf $(BUILD) keyhunt bsgsd kangaroo
 
 -include $(shell find $(BUILD) -name '*.d' 2>/dev/null)
