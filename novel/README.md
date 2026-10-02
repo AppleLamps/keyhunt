@@ -144,8 +144,64 @@ the sets onto themselves, so equivalence classes halve the effective set
 size. Status: implemented, verified on 40 to 50 bits, constant 1.70 over
 20 seeds at 45 bits: the best method in this directory so far.
 
+### 3. Generator lineage test (`lineage.cpp`, `make lineage`)
+
+**The bet.** Nobody has to beat the square root if the puzzle creator's keys
+came from a weak or seeded generator. 83 keys are known, puzzles 1 to 70
+complete and in order. If they are the masked outputs of a seeded
+generator, the small puzzles pin the seed cheaply (puzzle n reveals n-1
+bits of output), the large ones confirm it, and every unsolved puzzle's key
+follows at once. The keys look uniform, but so do the outputs of any seeded
+generator, so uniformity does not rule this out; only a direct search does.
+
+**What is searched.** Generator families: Java `Random` (48 bit LCG), glibc
+`random()`, MSVC and BSD `rand()`, minstd, xorshift32, xorshift64*,
+splitmix64, PCG32, MT19937 through `init_genrand` and through
+`init_by_array` (which is what Python's `random.seed(int)` and numpy use),
+MT19937-64. Seed spaces: every 32 bit seed for the cheap generators, and
+0..2^26 plus every second of 2013 to 2016 for the Mersenne Twister family.
+Derivations of an n bit key from the stream, all forcing the top bit as the
+puzzle does: low n-1 bits of one word, high n-1 bits of one word, a
+continuous bit stream, rejection of n bit words until the top bit is set,
+Python's `getrandbits(n-1)`, Python's `randrange(2^(n-1), 2^n)`; each with
+32 or 64 bit words and with 0 or 1 unused outputs between puzzles. A match
+on puzzles 1 to 32 is reported with the seed. The harness is validated by
+planting keys from Java `Random(12345)` and recovering that seed.
+
+**Result.** Pending: the run is in progress and this line is replaced by
+its outcome.
+
+### 4. Unknown parameter recurrence fit (`lcgfit.cpp`, `make lcgfit`)
+
+**The bet.** The seed search above only covers generators whose parameters
+are known. This one asks whether the keys are an affine recurrence modulo
+2^64 with *any* multiplier, increment and seed (`s' = a*s + c`, order 1, or
+`s' = a*s + b*s'' + c`, order 2), with the key being the low bits of an
+output and up to three unused outputs between puzzles. There is no seed
+space to enumerate: modulo 2^j the recurrence involves only the low j bits
+of its parameters, and puzzle n reveals the low n-1 bits of its output, so
+the parameters are lifted one bit at a time from the bottom, discarding
+every extension that contradicts a known key bit. A false hypothesis dies
+within a few levels; a true one survives to 64 bits. The harness is
+validated by planting keys from a random LCG and recovering its parameters
+(`./lcgfit s`, part of `make test`).
+
+**Result: negative, and decisively so.** Every candidate dies at the first
+level for every order and stride. The reason is the oldest known weakness
+of power of two LCGs: their lowest bit has period at most 2 (order 1) or 3
+(order 2), and the keys' lowest bits run 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, ...
+from puzzle 2 on. So whatever produced the keys, it was not an affine
+recurrence modulo a power of two read from the low bits.
+
 ### Candidates not started
 
+- Lineage, wider: string seeds (`random.seed("...")` hashes the string),
+  Java's default seed (`System.nanoTime()` xor a uniquifier, a 64 bit space
+  that needs the lattice attack on truncated LCG outputs rather than brute
+  force), OpenSSL `RAND_bytes` with a known broken seeding (the 2008 Debian
+  bug: 32767 possible streams per architecture), and "generated on a
+  specific wallet software" hypotheses (Bitcoin Core's `GetRandBytes` of the
+  time was OpenSSL based).
 - Herd steering: let the wild herd start at the target minus the interval
   midpoint and run tame and wild in lock step (van Oorschot-Wiener) and
   compare the constant with the symmetric start used now.

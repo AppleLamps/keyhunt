@@ -63,3 +63,5 @@ Mkfile.old
 dkms.conf
 build*/
 kangaroo
+lineage
+lcgfit
