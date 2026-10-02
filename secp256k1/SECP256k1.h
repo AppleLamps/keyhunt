@@ -58,7 +58,7 @@ public:
   Int *k0,Int *k1,Int *k2,Int *k3,
   uint8_t *h0,uint8_t *h1,uint8_t *h2,uint8_t *h3);
 
-  // 8-way AVX2 P2PKH hash160 of k[0..7]. Only call when hash160_avx2_available().
+  // P2PKH hash160 of k[0..lanes-1] with the SIMD kernels (hash/hash160_simd.h).
   // SIMD hash160 of `lanes` points (8 = AVX2, 16 = AVX-512; use the value of
   // hash160_simd_lanes()). GetHash160_N hashes the point itself (compressed
   // prefix follows y parity), GetHash160_fromX_N hashes the compressed form of
