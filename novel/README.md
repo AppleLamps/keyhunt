@@ -87,6 +87,16 @@ against the known key; ops as a multiple of sqrt(W), several seeds each):
 | Gaudry-Schost, negation on (`-g`) | 1.48 2.35 2.02 1.61 | 2.99 1.78 0.48 | | **1.6** (theory 1.36) |
 | Gaudry-Schost, negation off (`-g -n`) | 2.94 3.18 1.17 3.48 | 1.97 0.48 0.94 | | 2.0 (theory 2.08) |
 
+A second run with 20 seeds per method at 45 bits (mean, standard
+deviation, standard error of the mean; all 80 runs recovered the key):
+
+| method | mean | sd | se |
+| --- | --- | --- | --- |
+| kangaroo, negation off | 2.34 | 1.18 | 0.26 |
+| kangaroo, negation on (`-e`) | 2.46 | 1.30 | 0.29 |
+| Gaudry-Schost, negation on (`-g`) | **1.84** | 0.82 | 0.18 |
+| Gaudry-Schost, negation off (`-g -n`) | 2.23 | 1.41 | 0.32 |
+
 Throughput on this 4 vCPU Xeon: 14 to 19 M group operations/s. For scale,
 keyhunt's BSGS on the same puzzle 50 took 494 s wall (table build included)
 against 1 to 4 s for the kangaroo: BSGS pays for its table every time and
@@ -95,19 +105,24 @@ cannot grow past RAM, the kangaroo pays nothing up front.
 **Conclusions.**
 
 1. The travelling herd kangaroo lands on its textbook constant (about 2.0).
-2. The negation map does **not** help the travelling herd: it makes it
-   worse (3.0). Negating a walker sends its position from the interval to
-   its mirror image near the group order, so each herd splits across two
-   distant bands and the steady drift the kangaroo relies on becomes a zero
-   drift random walk in absolute position. The sqrt(2) only exists when the
-   search set is symmetric under negation, which is the next point.
+2. The negation map does **not** help the travelling herd: 2.46 against
+   2.34 over 20 seeds, where theory for a working negation map would say
+   1.41. (The first small sample read 3.0 and looked like a large loss; the
+   larger sample says "no gain", which is the honest statement.) Negating a
+   walker sends its position from the interval to its mirror image near the
+   group order, so each herd splits across two distant bands and the steady
+   drift the kangaroo relies on becomes a zero drift random walk in absolute
+   position. The sqrt(2) only exists when the search set is symmetric under
+   negation, which is the next point.
 3. In Gaudry-Schost form (interval re-centred on zero, restarts at
-   distinguished points) the negation map pays: 1.6 against 2.0 without it,
-   in the direction of the 1.36 that Galbraith and Ruprai prove. The sample
-   is small and the variance of these searches is large (a single run spans
-   0.5 to 3 times sqrt(W)); a 20 seed run per method is the next
-   measurement, and the GS set shapes of the paper (a tame set wider than
-   the wild set) are the next tuning.
+   distinguished points) the negation map pays: 1.84 against 2.23 without
+   it and against 2.34 for the plain kangaroo, in the direction of the 1.36
+   that Galbraith and Ruprai prove. Both constants sit about 0.3 to 0.4
+   above theory, which points at distinguished point overhead and the
+   untuned set shapes rather than at the method; the GS set shapes of the
+   paper (a tame set wider than the wild set) are the next tuning. The
+   variance of a single search is large (0.3 to 5 times sqrt(W)), so
+   comparisons need 20 or more seeds, as here.
 
 So the project's first result is a method keyhunt did not have (square root
 time with no table) and a measured, explained negative result about where
@@ -121,7 +136,8 @@ to a distinguished point and restart with a cheap precomputed offset
 wrapped back into the set, so no scalar multiplication is needed per
 restart. Collisions in the overlap of the two sets give k'. Negation maps
 the sets onto themselves, so equivalence classes halve the effective set
-size. Status: implemented, verified on 40 to 50 bits, constant 1.6 so far.
+size. Status: implemented, verified on 40 to 50 bits, constant 1.84 over
+20 seeds at 45 bits: the best method in this directory so far.
 
 ### Candidates not started
 
