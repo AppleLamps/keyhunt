@@ -162,10 +162,21 @@ static const char *conv_name[] = { "low bits of one word", "high bits of one wor
 // WB: word width used by the derivations. 32 takes one 32 bit output per word
 // (a 64 bit generator's top half), 64 takes a 64 bit output (for 32 bit
 // generators two outputs combined the way Java's nextLong does).
+// The generator's outputs for a seed are produced once and cached; every
+// derivation variant then reads the same cache from the start (rewind), and the
+// cache grows only when a variant survives past it. Each seed costs a handful
+// of generator steps instead of one run per variant.
 template <class G, int WB> struct Stream {
   G g; int B; uint64_t cur; int left;
-  void reset(uint64_t seed) { g.reset(seed); B = (WB == 64) ? 64 : (g.bits() < 32 ? g.bits() : 32); left = 0; }
-  uint64_t word() { return WB == 64 ? g.next64() : (uint64_t)g.next32(); }
+  std::vector<uint64_t> cache; size_t pos;
+  void reset(uint64_t seed) { g.reset(seed); B = (WB == 64) ? 64 : (g.bits() < 32 ? g.bits() : 32); left = 0; cache.clear(); pos = 0; }
+  void rewind() { pos = 0; left = 0; }
+  uint64_t word() {
+    if (pos < cache.size()) return cache[pos++];
+    uint64_t w = WB == 64 ? g.next64() : (uint64_t)g.next32();
+    cache.push_back(w); pos++;
+    return w;
+  }
   uint64_t bits(int k) {        // k <= 63 bits from the stream, MSB first within words
     uint64_t v = 0;
     while (k > 0) {
@@ -178,14 +189,14 @@ template <class G, int WB> struct Stream {
   }
   // Python getrandbits for MT (32 bit words): k <= 32 takes the top k bits of one word
   uint64_t pybits(int k) {
-    if (k <= 32) return g.next32() >> (32 - k);
-    uint64_t lo = g.next32(); uint64_t hi = g.next32() >> (64 - k);
+    if (k <= 32) return word() >> (32 - k);
+    uint64_t lo = word(); uint64_t hi = word() >> (64 - k);
     return (hi << 32) | lo;
   }
 };
 
-template <class G, int WB> static bool try_seed(Stream<G, WB> &st, uint64_t seed, Conv c, int skip) {
-  st.reset(seed);
+template <class G, int WB> static bool try_seed(Stream<G, WB> &st, Conv c, int skip) {
+  st.rewind();
   for (int n = 1; n <= NTEST; n++) {
     int k = n - 1; uint64_t top = 1ULL << k, mask = top - 1, key;
     switch (c) {
@@ -212,16 +223,18 @@ template <class G, int WB> static void search_w(const char *name, uint64_t lo, u
     for (;;) {
       uint64_t a = next.fetch_add(1 << 12); if (a >= hi) break;
       uint64_t b = a + (1 << 12) < hi ? a + (1 << 12) : hi;
-      for (uint64_t s = a; s < b; s++)
+      for (uint64_t s = a; s < b; s++) {
+        st.reset(s);
         for (int c = 0; c < NCONV; c++) {
-          if ((c == PYBITS || c == PYRANGE) && !std::is_same<G, MT19937>::value) continue;
+          if ((c == PYBITS || c == PYRANGE) && !(std::is_same<G, MT19937>::value && WB == 32)) continue;
           for (int skip = 0; skip < 2; skip++)
-            if (try_seed(st, s, (Conv)c, skip)) {
+            if (try_seed(st, (Conv)c, skip)) {
               hits++;
               printf("\n[!!!] MATCH on the first %d puzzles: %s seed=%llu (0x%llx) words=%d bit derivation='%s' skip=%d\n", NTEST, name, (unsigned long long)s, (unsigned long long)s, WB, conv_name[c], skip);
               fflush(stdout);
             }
         }
+      }
     }
   });
   for (auto &x : th) x.join();
