@@ -85,7 +85,7 @@ bool b58tobin(void *bin, size_t *binszp, const char *b58, size_t b58sz)
 	}
 	
 	j = 0;
-	if (bytesleft) {
+	if (bytesleft && outisz > 0) {
 		for (i = bytesleft; i > 0; --i) {
 			*(binu++) = (outi[0] >> (8 * (i - 1))) & 0xff;
 		}

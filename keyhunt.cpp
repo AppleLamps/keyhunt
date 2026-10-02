@@ -17,6 +17,7 @@ email: albertobsd@gmail.com
 #include "bloom/bloom.h"
 #include "sha3/sha3.h"
 #include "util.h"
+#include "sortutil.h"
 
 #include "secp256k1/SECP256k1.h"
 #include "secp256k1/Point.h"
@@ -140,20 +141,8 @@ int searchbinary(struct address_value *buffer,char *data,int64_t array_length);
 void sleep_ms(int milliseconds);
 
 void _sort(struct address_value *arr,int64_t N);
-void _insertionsort(struct address_value *arr, int64_t n);
-void _introsort(struct address_value *arr,uint32_t depthLimit, int64_t n);
-void _swap(struct address_value *a,struct address_value *b);
-int64_t _partition(struct address_value *arr, int64_t n);
-void _myheapsort(struct address_value	*arr, int64_t n);
-void _heapify(struct address_value *arr, int64_t n, int64_t i);
 
 void bsgs_sort(struct bsgs_xvalue *arr,int64_t n);
-void bsgs_myheapsort(struct bsgs_xvalue *arr, int64_t n);
-void bsgs_insertionsort(struct bsgs_xvalue *arr, int64_t n);
-void bsgs_introsort(struct bsgs_xvalue *arr,uint32_t depthLimit, int64_t n);
-void bsgs_swap(struct bsgs_xvalue *a,struct bsgs_xvalue *b);
-void bsgs_heapify(struct bsgs_xvalue *arr, int64_t n, int64_t i);
-int64_t bsgs_partition(struct bsgs_xvalue *arr, int64_t n);
 
 int bsgs_searchbinary(struct bsgs_xvalue *arr,char *data,int64_t array_length,uint64_t *r_value);
 int bsgs_secondcheck(Int *start_range,uint32_t a,uint32_t k_index,Int *privatekey);
@@ -3586,214 +3575,13 @@ void *thread_process_vanity(void *vargp)	{
 	return NULL;
 }
 
-void _swap(struct address_value *a,struct address_value *b)	{
-	struct address_value t;
-	t  = *a;
-	*a = *b;
-	*b =  t;
-}
-
 void _sort(struct address_value *arr,int64_t n)	{
-	uint32_t depthLimit = ((uint32_t) ceil(log(n))) * 2;
-	_introsort(arr,depthLimit,n);
+	parallel_sort(arr,(size_t)n,[](const address_value &a,const address_value &b){ return memcmp(a.value,b.value,20) < 0; },NTHREADS);
 }
 
-void _introsort(struct address_value *arr,uint32_t depthLimit, int64_t n) {
-	int64_t p;
-	if(n > 1)	{
-		if(n <= 16) {
-			_insertionsort(arr,n);
-		}
-		else	{
-			if(depthLimit == 0) {
-				_myheapsort(arr,n);
-			}
-			else	{
-				p = _partition(arr,n);
-				if(p > 0) _introsort(arr , depthLimit-1 , p);
-				if(p < n) _introsort(&arr[p+1],depthLimit-1,n-(p+1));
-			}
-		}
-	}
-}
-
-void _insertionsort(struct address_value *arr, int64_t n) {
-	int64_t j;
-	int64_t i;
-	struct address_value key;
-	for(i = 1; i < n ; i++ ) {
-		key = arr[i];
-		j= i-1;
-		while(j >= 0 && memcmp(arr[j].value,key.value,20) > 0) {
-			arr[j+1] = arr[j];
-			j--;
-		}
-		arr[j+1] = key;
-	}
-}
-
-int64_t _partition(struct address_value *arr, int64_t n)	{
-	struct address_value pivot;
-	int64_t r,left,right;
-	r = n/2;
-	pivot = arr[r];
-	left = 0;
-	right = n-1;
-	do {
-		while(left	< right && memcmp(arr[left].value,pivot.value,20) <= 0 )	{
-			left++;
-		}
-		while(right >= left && memcmp(arr[right].value,pivot.value,20) > 0)	{
-			right--;
-		}
-		if(left < right)	{
-			if(left == r || right == r)	{
-				if(left == r)	{
-					r = right;
-				}
-				if(right == r)	{
-					r = left;
-				}
-			}
-			_swap(&arr[right],&arr[left]);
-		}
-	}while(left < right);
-	if(right != r)	{
-		_swap(&arr[right],&arr[r]);
-	}
-	return right;
-}
-
-void _heapify(struct address_value *arr, int64_t n, int64_t i) {
-	int64_t largest = i;
-	int64_t l = 2 * i + 1;
-	int64_t r = 2 * i + 2;
-	if (l < n && memcmp(arr[l].value,arr[largest].value,20) > 0)
-		largest = l;
-	if (r < n && memcmp(arr[r].value,arr[largest].value,20) > 0)
-		largest = r;
-	if (largest != i) {
-		_swap(&arr[i],&arr[largest]);
-		_heapify(arr, n, largest);
-	}
-}
-
-void _myheapsort(struct address_value	*arr, int64_t n)	{
-	int64_t i;
-	for ( i = (n / 2) - 1; i >=	0; i--)	{
-		_heapify(arr, n, i);
-	}
-	for ( i = n - 1; i > 0; i--) {
-		_swap(&arr[0] , &arr[i]);
-		_heapify(arr, i, 0);
-	}
-}
-
-/*	OK	*/
-void bsgs_swap(struct bsgs_xvalue *a,struct bsgs_xvalue *b)	{
-	struct bsgs_xvalue t;
-	t	= *a;
-	*a = *b;
-	*b =	t;
-}
-
-/*	OK	*/
 void bsgs_sort(struct bsgs_xvalue *arr,int64_t n)	{
-	uint32_t depthLimit = ((uint32_t) ceil(log(n))) * 2;
-	bsgs_introsort(arr,depthLimit,n);
-}
-
-/*	OK	*/
-void bsgs_introsort(struct bsgs_xvalue *arr,uint32_t depthLimit, int64_t n) {
-	int64_t p;
-	if(n > 1)	{
-		if(n <= 16) {
-			bsgs_insertionsort(arr,n);
-		}
-		else	{
-			if(depthLimit == 0) {
-				bsgs_myheapsort(arr,n);
-			}
-			else	{
-				p = bsgs_partition(arr,n);
-				if(p > 0) bsgs_introsort(arr , depthLimit-1 , p);
-				if(p < n) bsgs_introsort(&arr[p+1],depthLimit-1,n-(p+1));
-			}
-		}
-	}
-}
-
-/*	OK	*/
-void bsgs_insertionsort(struct bsgs_xvalue *arr, int64_t n) {
-	int64_t j;
-	int64_t i;
-	struct bsgs_xvalue key;
-	for(i = 1; i < n ; i++ ) {
-		key = arr[i];
-		j= i-1;
-		while(j >= 0 && memcmp(arr[j].value,key.value,BSGS_XVALUE_RAM) > 0) {
-			arr[j+1] = arr[j];
-			j--;
-		}
-		arr[j+1] = key;
-	}
-}
-
-int64_t bsgs_partition(struct bsgs_xvalue *arr, int64_t n)	{
-	struct bsgs_xvalue pivot;
-	int64_t r,left,right;
-	r = n/2;
-	pivot = arr[r];
-	left = 0;
-	right = n-1;
-	do {
-		while(left	< right && memcmp(arr[left].value,pivot.value,BSGS_XVALUE_RAM) <= 0 )	{
-			left++;
-		}
-		while(right >= left && memcmp(arr[right].value,pivot.value,BSGS_XVALUE_RAM) > 0)	{
-			right--;
-		}
-		if(left < right)	{
-			if(left == r || right == r)	{
-				if(left == r)	{
-					r = right;
-				}
-				if(right == r)	{
-					r = left;
-				}
-			}
-			bsgs_swap(&arr[right],&arr[left]);
-		}
-	}while(left < right);
-	if(right != r)	{
-		bsgs_swap(&arr[right],&arr[r]);
-	}
-	return right;
-}
-
-void bsgs_heapify(struct bsgs_xvalue *arr, int64_t n, int64_t i) {
-	int64_t largest = i;
-	int64_t l = 2 * i + 1;
-	int64_t r = 2 * i + 2;
-	if (l < n && memcmp(arr[l].value,arr[largest].value,BSGS_XVALUE_RAM) > 0)
-		largest = l;
-	if (r < n && memcmp(arr[r].value,arr[largest].value,BSGS_XVALUE_RAM) > 0)
-		largest = r;
-	if (largest != i) {
-		bsgs_swap(&arr[i],&arr[largest]);
-		bsgs_heapify(arr, n, largest);
-	}
-}
-
-void bsgs_myheapsort(struct bsgs_xvalue	*arr, int64_t n)	{
-	int64_t i;
-	for ( i = (n / 2) - 1; i >=	0; i--)	{
-		bsgs_heapify(arr, n, i);
-	}
-	for ( i = n - 1; i > 0; i--) {
-		bsgs_swap(&arr[0] , &arr[i]);
-		bsgs_heapify(arr, i, 0);
-	}
+	const size_t len = BSGS_XVALUE_RAM;
+	parallel_sort(arr,(size_t)n,[len](const bsgs_xvalue &a,const bsgs_xvalue &b){ return memcmp(a.value,b.value,len) < 0; },NTHREADS);
 }
 
 int bsgs_searchbinary(struct bsgs_xvalue *buffer,char *data,int64_t array_length,uint64_t *r_value) {
