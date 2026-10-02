@@ -336,7 +336,16 @@ Validated by `./walletfit selftest` (part of `make test`), which plants keys
 from seven scheme, base and mask combinations and recovers each one with no
 stray match.
 
-**Result.** Pending: the full run is in progress and this line is replaced by its outcome.
+**Result: negative.** The full run (4 threads, 22 minutes) covered 79.1
+million seeds (3600 words, 12.4 million letter strings, 50 million decimal
+numbers, 16.8 million hexadecimal numbers), each under 27 scheme and base
+combinations and 4 mask conventions, about 8.5 billion candidate key
+streams in all, and none reproduces puzzles 2 to 40. So the keys are not
+consecutive outputs of a SHA256, HMAC or hash chain scheme from any seed
+in those spaces. What this leaves open is exactly what the creator's
+sentence suggests: a real deterministic wallet (old Electrum, Armory,
+BIP32) whose seed is a random 128 bit or larger value, which no enumeration
+can reach, and unusual stream constructions. Puzzle 71 is unchanged.
 
 ### Candidates not started
 
