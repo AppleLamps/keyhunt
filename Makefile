@@ -192,6 +192,7 @@ test: keyhunt kangaroo lcgfit lineage $(TEST_BINS)
 	@sh tests/test_kangaroo.sh ./kangaroo
 	@./lcgfit s > /dev/null && echo "[ok]   lcgfit self test"
 	@./lineage selftest 2 > /dev/null && echo "[ok]   lineage self test"
+	@if command -v python3 > /dev/null; then python3 novel/nonce_forensics.py | grep "creator nonces deterministic (RFC 6979): True" > /dev/null && echo "[ok]   nonce forensics (RFC 6979 confirmed)"; else echo "[skip] nonce forensics (no python3)"; fi
 
 clean:
 	rm -rf $(BUILD) keyhunt bsgsd kangaroo lineage lcgfit

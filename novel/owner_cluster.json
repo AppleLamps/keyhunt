@@ -1,0 +1,3016 @@
+[
+ {
+  "address": "173ujrhEVGqaZvPHXLqwXiSmPVMo225cqT",
+  "roles": [
+   "ancestor-1 of 2015 funding (256 outputs)",
+   "ancestor-2 of 2015 funding (256 outputs)",
+   "ancestor-3 of 2015 funding (256 outputs)"
+  ],
+  "funded": 10127,
+  "spent": 10125,
+  "balance": 4.154e-05,
+  "pubkey": "031c24239a829a89d7e12a0a5b1456ce60168c2c7dd29b63ea6a2aa8ef64665050",
+  "service_like": true
+ },
+ {
+  "address": "172Pq8RrBa7MAE3oh2DpjHnrhTewTybE4v",
+  "roles": [
+   "ancestor-1 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03b98de85dc6d7f772bde2fdb4aa9de77f93b06b6c0aa915886fff52016660c1f8",
+  "service_like": false
+ },
+ {
+  "address": "38GSZbXL7gybuM43FhmbYYUw8TB3YZY9Yj",
+  "roles": [
+   "ancestor-1 of 2021 top-up (11 outputs)",
+   "ancestor-2 of 2021 top-up (11 outputs)",
+   "ancestor-4 of 2021 top-up (11 outputs)",
+   "ancestor-5 of 2021 top-up (11 outputs)",
+   "input of 2021 top-up (11 outputs)"
+  ],
+  "funded": 48,
+  "spent": 48,
+  "balance": 0.0,
+  "pubkey": "03c9e41cabadff7727506f261c16ecc8c2918d61047689431d86cea702a80b5709",
+  "service_like": false
+ },
+ {
+  "address": "3JjPf13Rd8g6WAyvg8yiPnrsdjJt1NP4FC",
+  "roles": [
+   "ancestor-2 of 2019 dust priming of the 21 pubkey addresses",
+   "ancestor-3 of 2019 dust priming of the 21 pubkey addresses",
+   "ancestor-4 of 2019 dust priming of the 21 pubkey addresses",
+   "ancestor-8 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 275479,
+  "spent": 275479,
+  "balance": 0.0,
+  "pubkey": "0248566d3b6acc09341b00ed637bb5b5c4195352e13edb3402acd7f6c00438e508",
+  "service_like": true
+ },
+ {
+  "address": "1HrYYnsgwoU93pj5k1o3jh4Tomu1f9tqB3",
+  "roles": [
+   "ancestor-3 of 2021 top-up (11 outputs)"
+  ],
+  "funded": 9,
+  "spent": 9,
+  "balance": 0.0,
+  "pubkey": "03c9e41cabadff7727506f261c16ecc8c2918d61047689431d86cea702a80b5709",
+  "service_like": false
+ },
+ {
+  "address": "13R2zxMCqDSaCk85UxnLpe5ktzUGAEWJW9",
+  "roles": [
+   "ancestor-4 of 2015 funding (256 outputs)"
+  ],
+  "funded": 28986,
+  "spent": 28977,
+  "balance": 0.09319829,
+  "pubkey": "046cbeedc878d783d1be628114bc29ea71cf6936ae3d1fdbd641b96630f0f9a7e79403b3f11dc3ae6d94303804c053aaf5efc5732940e079f1c1eba38cd01628f5",
+  "service_like": true
+ },
+ {
+  "address": "1mRxLHT4CG71LjjUvr8J1ujT44YnFCx9Z",
+  "roles": [
+   "ancestor-5 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "020573862932d68abe115f187619ce9563ec383a76dc6ac7c018e1766e21e93773",
+  "service_like": true
+ },
+ {
+  "address": "1Le6RSvWQJU99gUqQ2brztk3yDNqXHqMG6",
+  "roles": [
+   "ancestor-5 of 2015 funding (256 outputs)"
+  ],
+  "funded": 48,
+  "spent": 48,
+  "balance": 0.0,
+  "pubkey": "03c7a23da671dc945a93f4fa6a8e4f4f003c7bda98de724cae57260a8da5a5df19",
+  "service_like": true
+ },
+ {
+  "address": "1AjhDc8Wy7BSPEfqC1KuUgQqT1FFciEmUu",
+  "roles": [
+   "ancestor-5 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03d02163a165b92fd39b38ae04912b53842ab9690f2312dc4ade116d547e9bc046",
+  "service_like": true
+ },
+ {
+  "address": "16pSxnrrXHX287v7jhTWPo2rTGnK766mQV",
+  "roles": [
+   "ancestor-5 of 2015 funding (256 outputs)"
+  ],
+  "funded": 9,
+  "spent": 9,
+  "balance": 0.0,
+  "pubkey": "03114b72fb2cbc2d584e43b4d78c9ff15a1f8f319a8e3de7106755c53403ddb576",
+  "service_like": true
+ },
+ {
+  "address": "1CuEPBXHfiiBfZA3eWBRVR4k7vfqxNSZ2o",
+  "roles": [
+   "ancestor-5 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0383a4fb135b393a6592ee9719888c8f9c1549d9058849d501b61a8ff9da1cacf0",
+  "service_like": true
+ },
+ {
+  "address": "1MHLovXg1cqfNuJLRbzZmuPMFvEN3nDG4c",
+  "roles": [
+   "ancestor-5 of 2015 funding (256 outputs)"
+  ],
+  "funded": 113,
+  "spent": 113,
+  "balance": 0.0,
+  "pubkey": "03951c39cd6f7c8e017541a9b90df4b837585669ae7276311c1d8447302733a7fe",
+  "service_like": true
+ },
+ {
+  "address": "1MvtzKFCRtEp34ZoYf9udnzdCSRBhrkiAn",
+  "roles": [
+   "ancestor-5 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02969109192bfb58e0ddaaecd30da168d219065ec0d8c87c24fee4fd00e29beaea",
+  "service_like": true
+ },
+ {
+  "address": "17BzGrrcRxhy68hoSRD13nHuTyP8QJuoWp",
+  "roles": [
+   "ancestor-5 of 2015 funding (256 outputs)"
+  ],
+  "funded": 21,
+  "spent": 21,
+  "balance": 0.0,
+  "pubkey": "0214e9ea74ef85357b7d202b4d23fe1d9e0dc56f14656473c6ed869589091c4c97",
+  "service_like": true
+ },
+ {
+  "address": "1Jbgxv7FCPo3KfLet8SJxDThYTnfeR1Peo",
+  "roles": [
+   "ancestor-5 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02589fddce05c1e967cf3c99cb0a97ed4d0d4e7da550df8a635510ad69cdf9c022",
+  "service_like": true
+ },
+ {
+  "address": "13ZqnAXiTmLWPaRfkxKQB4ko1arG4DrQJx",
+  "roles": [
+   "ancestor-5 of 2015 funding (256 outputs)",
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 125,
+  "spent": 125,
+  "balance": 0.0,
+  "pubkey": "033e21bbe1383688f1508c94cf7cf4a74aa0e3539ef4a2da9248051a6b79fb1a89",
+  "service_like": true
+ },
+ {
+  "address": "1AEFwvbQ11DiHC2QGQyGWP6kAXr5kvxwCE",
+  "roles": [
+   "ancestor-5 of 2019 dust priming of the 21 pubkey addresses",
+   "ancestor-6 of 2019 dust priming of the 21 pubkey addresses",
+   "ancestor-7 of 2019 dust priming of the 21 pubkey addresses",
+   "ancestor-8 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 2994,
+  "spent": 2993,
+  "balance": 0.00072341,
+  "pubkey": "032a28aede32ce0a549525ec8ddde5c5546613edfcf4037ea84fdcbd3764b6cdaf",
+  "service_like": true
+ },
+ {
+  "address": "3C8L7XeQZKDByoQ67n5EtpfULgaAJqS6DQ",
+  "roles": [
+   "ancestor-6 of 2015 funding (256 outputs)"
+  ],
+  "funded": 3,
+  "spent": 3,
+  "balance": 0.0,
+  "pubkey": "3045022040b5d8c67728b85ade29db3843ca505e9ddf151af67ef80c0a9497854b5b5b80022100d6ac626bb658784b06998f27aeba176ab5676fea18342cf092dab3e03c35057e01",
+  "service_like": true
+ },
+ {
+  "address": "1KqhBnrfxnEBqMWdsJ59754rh6k2DvaYea",
+  "roles": [
+   "ancestor-6 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "026f0696f3fa30fb75dfd48b0c678bdbe4285a73b9b504c348287c6ab0da63fd34",
+  "service_like": true
+ },
+ {
+  "address": "1DACTRVqEt2WjvrxLrRnyjgZkHKZRUabVr",
+  "roles": [
+   "ancestor-6 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03c3fb6712ee00c54ef043df9a220415546ec8136521ae3f281c0320238332c75a",
+  "service_like": true
+ },
+ {
+  "address": "1E3jmzhqUgQ6VaySpmVwqPvAvvssXfd2bT",
+  "roles": [
+   "ancestor-6 of 2015 funding (256 outputs)"
+  ],
+  "funded": 300,
+  "spent": 300,
+  "balance": 0.0,
+  "pubkey": "03bfdcee90688f2d40753f5347188ea645053b3727394702d9384153f3e6c3b0f9",
+  "service_like": true
+ },
+ {
+  "address": "18uS6msvogrBQoQTUfgMSWXC1cxrgX6W4e",
+  "roles": [
+   "ancestor-6 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0217ec7639ca4e39473739bfeb4cb894ba125a61ee7b82da97d461b16a466a7212",
+  "service_like": true
+ },
+ {
+  "address": "1McZ9VyxJgkdGnYjy562ZNg8WNhPAsfZLK",
+  "roles": [
+   "ancestor-6 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03c885bec783355a568d1d80ece8f6bf564e50ca94a756d2d9dffd1e891c4c6d75",
+  "service_like": true
+ },
+ {
+  "address": "1YJ68kqygQpHyWa9pgvioxzo1Liyu48Zv",
+  "roles": [
+   "ancestor-6 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0255ea3ce4c598b19d345f1105367e0869a1bd4f89409f005e6f889b72c2a12d54",
+  "service_like": true
+ },
+ {
+  "address": "1CLypC2XZKpamvJpQRFFutFYoGwb8Kd7Db",
+  "roles": [
+   "ancestor-6 of 2015 funding (256 outputs)"
+  ],
+  "funded": 165,
+  "spent": 165,
+  "balance": 0.0,
+  "pubkey": "02e49139317626ee0b6ec01847594b627ac9dba5da4db83ac077b6711adecbaef5",
+  "service_like": true
+ },
+ {
+  "address": "16bhhFMQ2EhiMMoipNYdJgtTiFhrfZNy88",
+  "roles": [
+   "ancestor-6 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "037f24c8195f7cb111998008d8b808a87c53aeaa6e68561ae583465a2e736b4a7d",
+  "service_like": true
+ },
+ {
+  "address": "1Kq2zFMXCWwGAJtEg9qYNJTVNf2QGNcav6",
+  "roles": [
+   "ancestor-6 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "04d6a2fd9a03c4b5f77dd21d3d6cec4ddd9a80cf6dd8021b13c82755d7afbde4d7b825fcc9ec37f4c5a3295a104559e50bba8b2ca9e217ae04c1f5b6cb5864800a",
+  "service_like": true
+ },
+ {
+  "address": "1Hf2GuHnLRKubCs3cMj9ygmp1UBgQnZhui",
+  "roles": [
+   "ancestor-6 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "041f392195fcc384b0e0beb6f09de45b529d6494009d580bf55aef838dd5cfb0a6d48fffde70fcad7bfa50f6b2bce42137218fd643660ffbc8a40b37a4ca6d4721",
+  "service_like": true
+ },
+ {
+  "address": "17yqKoWEqj97h4Mbbb4VzkRLQ9G5Pz1mq6",
+  "roles": [
+   "ancestor-6 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "033e1229a5c595f1484cc58b40202710ffc5d5de64b45e509a2f557b282a3d7d46",
+  "service_like": true
+ },
+ {
+  "address": "1JoRpE8JU3F9bcQipd6t4xf2Jy2ev7Gxg7",
+  "roles": [
+   "ancestor-6 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "030723cc39f190658fc74bec50a0174a6fd012e1b859c3b9cef07e03278b0db2c1",
+  "service_like": true
+ },
+ {
+  "address": "1Pi6cy5wNMqVHi6FM2LfYvgqE4UHcxedAX",
+  "roles": [
+   "ancestor-6 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0311b9582df0ba9607f89840ef37f9b5e04230a8eb31b2b7ee8510587995abcd2e",
+  "service_like": true
+ },
+ {
+  "address": "1P1TRhe6RMPzLvtbdkfvLxoBvUSNhG92Vd",
+  "roles": [
+   "ancestor-6 of 2015 funding (256 outputs)"
+  ],
+  "funded": 66,
+  "spent": 66,
+  "balance": 0.0,
+  "pubkey": "034bebcc6a0cfb0741139fdd870fa397688aa03012b6a683dff6e47f6bd27b3e67",
+  "service_like": true
+ },
+ {
+  "address": "1AeuEHJZR443EsoeZ41GzpnpdFft7mNuic",
+  "roles": [
+   "ancestor-6 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0292c749294996a82489b3df066faf972222ab847cb125d6905d959ee970b5871f",
+  "service_like": true
+ },
+ {
+  "address": "1Gh9491nUDg2BkhzLCi9chd1ptQyJT1qVj",
+  "roles": [
+   "ancestor-6 of 2015 funding (256 outputs)"
+  ],
+  "funded": 3,
+  "spent": 3,
+  "balance": 0.0,
+  "pubkey": "03a3f6cd677efcca617f0f86223d15863783f3e53504abfcd10bda6cddf8087255",
+  "service_like": true
+ },
+ {
+  "address": "13yADm2QgYHpdR1QtCpp9pFC3Be2Kizst9",
+  "roles": [
+   "ancestor-6 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02cb8037752297067fe6c0bb437392232b552272db8a2e072bea380a3f106e6fe1",
+  "service_like": true
+ },
+ {
+  "address": "14WE8JtSQhjbDPwCpzzurpeHg7cxTRaSQH",
+  "roles": [
+   "ancestor-6 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02a035fb8cdb905f1a62edd5256a806530f3de6a5ac5b547f362539250d7f1274e",
+  "service_like": true
+ },
+ {
+  "address": "1Dvpf7CAtV5GtgvoNr9jSg6kfQyyznsfVe",
+  "roles": [
+   "ancestor-6 of 2015 funding (256 outputs)"
+  ],
+  "funded": 163,
+  "spent": 163,
+  "balance": 0.0,
+  "pubkey": "02bcd2cd5be46f321794158fb2294ed5c3637d80b3333348e83cb666f25469683d",
+  "service_like": true
+ },
+ {
+  "address": "1GU8cmniXTq9gse94k5DLDZgQHMqjr6Dyh",
+  "roles": [
+   "ancestor-6 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "025576e72e06584a36afae6dea3ab9310bfa09573e9011c44e41cc626469e013b9",
+  "service_like": true
+ },
+ {
+  "address": "3KDdjwvCXfb9NbXnMkMxvqQVcPMwbNpr5C",
+  "roles": [
+   "ancestor-6 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 12,
+  "spent": 12,
+  "balance": 0.0,
+  "pubkey": "03dbd08743290797607969a5f7a4c2a9166f63966dd8e5b43684af26ac8b1e2c50",
+  "service_like": false
+ },
+ {
+  "address": "32k74oLBiJHbTCdSVtwCNi7kxbBg8wtSeg",
+  "roles": [
+   "ancestor-6 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 5,
+  "spent": 5,
+  "balance": 0.0,
+  "pubkey": "024a44189b1b6546e0701e59997270567c32a4aab17e06b2edbfe2a52358e4482b",
+  "service_like": false
+ },
+ {
+  "address": "3FiBG7RtujzvUQ2EcEcZ1Mdy4GF7L22T7o",
+  "roles": [
+   "ancestor-6 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 4,
+  "spent": 4,
+  "balance": 0.0,
+  "pubkey": "0231025a3f351cd1f33f0cd6e19d6a63539737851e9016293686e394a34c1ca136",
+  "service_like": false
+ },
+ {
+  "address": "3ErAuC4BENJ9pAuL9MNf8g7uttRFTkGMN1",
+  "roles": [
+   "ancestor-6 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03ba30db6f0fc325f61c608a248d2d0487766409a09daf7aee80ea00c7665e368e",
+  "service_like": false
+ },
+ {
+  "address": "3E5z8dJW2rVvaNL7KvKZWznRmxzLRkUXNA",
+  "roles": [
+   "ancestor-6 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 5,
+  "spent": 5,
+  "balance": 0.0,
+  "pubkey": "03b12f4b524c2627534dc77504c7fea474eaaae3af17bcfef745dacac30ca4f886",
+  "service_like": false
+ },
+ {
+  "address": "3PDt867XyDEmKNr9fAbyoZJLuF348ETan5",
+  "roles": [
+   "ancestor-6 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0297713ce81ffda1a97353d575ece3c36c2521e0125f1c8cd6b21033b935e54747",
+  "service_like": false
+ },
+ {
+  "address": "1Dj8SBaVEnMixb7szm95L3mA4NnYmKEsP1",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02a58b3606fb1f9e3582074642866fe62b051a72ec59a8a02190e44f1c4b37a82d",
+  "service_like": true
+ },
+ {
+  "address": "1J8rMZzEnTNHF3k4wJX3AcJGGBEjuiuyFa",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0366e2223b32f1417b8292c1d03604f758a7e477094e80687b0cb22bb26b2daf6b",
+  "service_like": true
+ },
+ {
+  "address": "1ABPP4EyVN8owX46HgkMZoLPLeXoMpq8Bg",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "032f1d4597babdd0015497bdd7d8dddf6c059db4892478b6aea3399cdcdd1c48da",
+  "service_like": true
+ },
+ {
+  "address": "1HECj2BqMAjhsTsXBX5m4ot4hfFSVtko76",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03eb26d5f23fc05ede703563adf2142e95be38192cb3ab87c6c3a0033c584814ea",
+  "service_like": true
+ },
+ {
+  "address": "1QBD3rZ53jCwcJiyyQYyR5XPe8sNAPPwsX",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 14,
+  "spent": 13,
+  "balance": 0.21398052,
+  "pubkey": "0220c45b7cf7b5bfbf916f2867b411d072193dcd5f9cf4830bc32af63006a0df0e",
+  "service_like": true
+ },
+ {
+  "address": "164qWJcNjBqcR4epHWrKTrvkz29FSaJDge",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0374cd00f0393ced825e814f056b168cebc7a35b050f7c8934f093a3ded1005375",
+  "service_like": true
+ },
+ {
+  "address": "1MNbajQhJrxbtLnREgo9TYrsWaUQQ11unf",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "039c54f369969d49d352661eb9121d5a1e9d25c0da6ad24ba5c644b65879bcf6f7",
+  "service_like": true
+ },
+ {
+  "address": "1P63Pr4feVg2BqDiLSCrbV2qw7RNUV3TfM",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 18,
+  "spent": 18,
+  "balance": 0.0,
+  "pubkey": "0258e319f80ee98db8960f66bf6e58438fc572bfb3f43f79767cef4106d6908a72",
+  "service_like": true
+ },
+ {
+  "address": "15m31By9JH8EraLtGqCoytT88ujboSzFKb",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 38,
+  "spent": 38,
+  "balance": 0.0,
+  "pubkey": "0336d86c1f6b9914f824ea83c90380724ae540538a4edcf29d3f54c16e48dafdbc",
+  "service_like": true
+ },
+ {
+  "address": "1Jf7KLYcuYoY6qg4KdyMR4YKgfSWMCwgaa",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0379b34980b13176aac3a1a71a94e8fe9e48033abbee8519868626c0a092e1e129",
+  "service_like": true
+ },
+ {
+  "address": "1FZChxF94NiE2jhVotczLFkTzUyaZaXfKS",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02d93b4bdcd6450605ea970b0a9598404430d7cf98fdcbc2b15f5bbfbd40f278dd",
+  "service_like": true
+ },
+ {
+  "address": "1EERRrFoLHxed8eoGVyB2i5qDaRodFLwHC",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02488852166605d1fa886b54637c6627151012b92a94e8230d93723a86f898f5d1",
+  "service_like": true
+ },
+ {
+  "address": "15sApaF2uroPTfXG5QFTbms57T2kXt85DQ",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "04f9695d05bb46c2ee4c9dae3523d698bcd0a0c241c0d1a4479ca624f402f8f891ad0316cea5e97351b7d5b1a25cdafe25d8f6b9f92477a987cb860e0501704eb0",
+  "service_like": true
+ },
+ {
+  "address": "197DXfVLayMtoZzAZUxfqo7wxf42CuxNdn",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "045bde793f7c9b7f7833985f490e6eff37809146d122416a11ef3ef5d36f730aa2f7914dc4b9e107ecbbeee6b958e7a0a1a1f6a50641ecf1ff3771fa44473e61b6",
+  "service_like": true
+ },
+ {
+  "address": "1EQxzdTDxS8N7Z55rzJYJpKEqdRKfmo49y",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03722cd5b31fcd628f9789ecd89f192ccb9ba7464803363deb10140c3e941c9320",
+  "service_like": true
+ },
+ {
+  "address": "1JiMoV1uQSiW6iN3K6NpkY6gWNE7ap6UU5",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0431ae8c48ee56358779c5415cb68ac6e391289ebf13bc998f467039ed369c5a6c10d240e7fb6fb7a0c76b0745e37a11a47cd608c737f94b24fb6f2791a423da33",
+  "service_like": true
+ },
+ {
+  "address": "1F7ui3rJibzc478gGTMEwLT4ZCBZ1Myy9o",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "04a87322841055be6066f22707e1132058bda52bf31e0602bdde949c5f42204009cec90481ff2be87bad0c92c51c81a64edc3f1ff4fea46e66323b8c2d1e7fb90e",
+  "service_like": true
+ },
+ {
+  "address": "12Di9uR17LADwcBt7vHbzbmzqdeyJ9eYbV",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "04f1d294a5e7faf6e3ffa52e9bb7fef9541faf434ad3d5717f3797fdf5c38824136f27b6efd0058ad3af6fb94df48ee02f332b412c7256b6f979a8527bf5089d26",
+  "service_like": true
+ },
+ {
+  "address": "1P2aHzoBSPj7zeWDrVV6N8GVUu1YRnbMgw",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "048772823f04a3c11620f7756865eb8383e27995227776a920d9af95bd117ff4784a1d5ba5695aa3d2b578996468842a431c641a46e5e62630ddb82b81e1d0669c",
+  "service_like": true
+ },
+ {
+  "address": "1ESp4uYNuqo6o4poJu8pUvbMsj8rRz7Jpt",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0223f085b649582bf265b2c13126e606998088ae005d6f09941c815a29043ec584",
+  "service_like": true
+ },
+ {
+  "address": "17DNGiiijZYFbP5urU3HTEFyYuxAHifz5a",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "032883f394473201adae93cf6a68659dca2deba5304028044d45db5fec5edd0aec",
+  "service_like": true
+ },
+ {
+  "address": "17KioyPkM49eUESovcVa8YzR2kMgcxUZhs",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "030c6000c37cc4c716620702f417ded9e77d7f64291b5c92f904e5af90371e73bd",
+  "service_like": true
+ },
+ {
+  "address": "19YhrAF3qkPfPT8pVfMrrCJ53RdkydtGjy",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03c0bbbecbf06549e9a2b24b8fe17a2c29efb5f43ea2c4f2b902d27c6028ed33b2",
+  "service_like": true
+ },
+ {
+  "address": "14vYydgt8A9qHYMELwxwqcHj95o3edFrma",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "038902f90303e9f6db8273726418ccc58068af0e80b1479a2184aa98967d3e63da",
+  "service_like": true
+ },
+ {
+  "address": "1KQmnyJSrUCKXpidgjuHtxkU33xTymnJ7n",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0384d0fe240713b0e8be56bd8b0e4025c4d2d291e5efe0cd927b644ee068c599cf",
+  "service_like": true
+ },
+ {
+  "address": "19wrz7UCgN3boV5mxaky97GXg4RiMrfoF7",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03e409d0ae536c7a76ab038a1bf68a8030f7fac1af8ca7a221c1364bdeabd3cf8a",
+  "service_like": true
+ },
+ {
+  "address": "12ypqXPXpRXkLDWDn3f1Dg1ARKJjPneGdU",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 22,
+  "spent": 21,
+  "balance": 0.00020934,
+  "pubkey": "02364a08b361d15acc61e3e82a46c20433298121a954043b7f475d226199105fc3",
+  "service_like": true
+ },
+ {
+  "address": "1NvgCThKqoh94PJd33g559MprgpCNAgHV6",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03bc189219e7625edea0487177b0cfebcc60d8c96f0dd509a0dd87fa20aeb82873",
+  "service_like": true
+ },
+ {
+  "address": "1MERkB5iroUML35fYy6PHyUA8dLZAQaSzm",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03f3bd79ccb9376e41ae93836f5ea2a9594d1b62161536a52c774692dd874ea203",
+  "service_like": true
+ },
+ {
+  "address": "12qMsZANKxN3SxxrgeqhBaKpHRc8aFg2pe",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02b9e5f387346dce51e43bd6a6f7f159b4a29e6a799975780591f836800560b74b",
+  "service_like": true
+ },
+ {
+  "address": "16mdPjCJGZsLx8eaCiH3cjM1nC9xioB9SV",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02e02fc692fb82e5747cb37ea1be28e7f40d44fd87fce3041dd56aaabe733c229e",
+  "service_like": true
+ },
+ {
+  "address": "1BTCPayb5AdF8fSsR7oews2PpuVpRtamk6",
+  "roles": [
+   "ancestor-7 of 2015 funding (256 outputs)",
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1638,
+  "spent": 1638,
+  "balance": 0.0,
+  "pubkey": "04226afe721a277c97a6182afa1b89f3c2264c114945df6511fb79fc32bffefd519127c016a8a42c3ce97fcc587dbcf0d40df1bf9012f8336c141c28f34e9b44ee",
+  "service_like": true
+ },
+ {
+  "address": "3CJfSfbyvU4KN1yWc1YdQjFUfG7fXwnwkb",
+  "roles": [
+   "ancestor-7 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0278b0138d922f8345b6a768b0769aaf9ce2f45b51d1594bee40ccb9aebab71f4e",
+  "service_like": false
+ },
+ {
+  "address": "3Nj73bqgghs3LVggmvAQdVApnFybW1UCYZ",
+  "roles": [
+   "ancestor-7 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03d8e00f408c7130b7d2e0a5fcc7378b6522c18ab0cd6c55f478a37a2e9bebfeaf",
+  "service_like": false
+ },
+ {
+  "address": "1Hfzb9WwKfPVV7ht9zvcpMGaVXsJHC4Ev4",
+  "roles": [
+   "ancestor-7 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03c1e2bbaff74c848aeeae9df4dd0571c14f877645c00eea7c6c77fc1bc488cf4f",
+  "service_like": false
+ },
+ {
+  "address": "bc1q7xfw2j8kh78semc83smmy86cx2e98fhn6x60uy",
+  "roles": [
+   "ancestor-7 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02e7a6d8be17d98e9d347c24fa2e74612046d0b342ab671427d22f6427a716a3f4",
+  "service_like": false
+ },
+ {
+  "address": "bc1qvqgfu5t6a6d5fsz8fdzk4g6krgpwps9q2gzasn",
+  "roles": [
+   "ancestor-7 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03acd7414b9c7a881cb85cf334c71eebdbe622c246def7f4bdd214a4080b7f97df",
+  "service_like": false
+ },
+ {
+  "address": "12R1j7ZtoQFC1xxH9c9AmDQekLkALoXVMB",
+  "roles": [
+   "ancestor-7 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 3,
+  "spent": 3,
+  "balance": 0.0,
+  "pubkey": "0364a46d546a49ac7bd8c9aaa822513edf3c9888fb9a7fac8447b59a888b7f8c6d",
+  "service_like": false
+ },
+ {
+  "address": "3MA1W7rPhMSQZbWVeexKfDuXEXnvtmCrE2",
+  "roles": [
+   "ancestor-7 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "023f24b1a33061d7349774df6f9f4cf1db426a9faf714996a20e28f175c071242f",
+  "service_like": false
+ },
+ {
+  "address": "3PMWhsZzyx1y9dgCatbfJHDeF5QSU6j2me",
+  "roles": [
+   "ancestor-7 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "031bf72b71ec9f3c02d6019b9ca96eede35168ebdabcf434b512411fa5ab52480f",
+  "service_like": false
+ },
+ {
+  "address": "381sti52dAPenckK3cdrhFxWVSsYjcunys",
+  "roles": [
+   "ancestor-7 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 4,
+  "spent": 4,
+  "balance": 0.0,
+  "pubkey": "03a768f2be0bb55ec0c39db8e3f0a51d777724e889150aa82cfdf713b80c5049ac",
+  "service_like": false
+ },
+ {
+  "address": "3R1HVHLqJmDPuJPQ28Qyo84W8Rov34253N",
+  "roles": [
+   "ancestor-7 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02eab6258eda7a667c6e894b5b76bbff0c241dea89b54a7e03a19626d03b9db99a",
+  "service_like": false
+ },
+ {
+  "address": "3NborHQzfrfmSmQ5bsNJWjmiwrWQ3vJQM5",
+  "roles": [
+   "ancestor-7 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0300824b84ace3700fefa71560e101c90a160ba5d8b5e06ebc33168a16f1d1c28a",
+  "service_like": false
+ },
+ {
+  "address": "bc1qpxxzctgrptxzte6enlnqclwmtzqndf8u5s5n00",
+  "roles": [
+   "ancestor-7 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0318e1519908c63eb83d56e0a05459384d37e8c0f80aaec89faecb49c3ae3baeb1",
+  "service_like": false
+ },
+ {
+  "address": "bc1qjrase7gavwqxwvpl58wcza7ztkpw09t85p90yn",
+  "roles": [
+   "ancestor-7 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "027a92c4b7a2cd4b53610a7dbff8a0bf5fc723d9f92db8f632018dee6d6a902de9",
+  "service_like": false
+ },
+ {
+  "address": "14T3hFkpT8TQV6osjFiFGJAxUCyf9MkuKf",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0280ebf65f5a0c4d361f022a933f29efceb8191c016aec1b313a4657cec8e0f249",
+  "service_like": true
+ },
+ {
+  "address": "1GbTpXx5WzFeXqG6qYm7EQEG93D3oMcmsJ",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 280,
+  "spent": 280,
+  "balance": 0.0,
+  "pubkey": "02ac9b7833b9068445a7dac32979ef7632224d2b4ddc6960646ecf7c0eacf75f2d",
+  "service_like": true
+ },
+ {
+  "address": "1CEYMaqAXMCfCb2mCndnaUd8QmfnbDVDQe",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0249bc4e6adafc145309a02a985fb0bb7d20668550f9b0381b04fb1d4a013c55d3",
+  "service_like": true
+ },
+ {
+  "address": "1AsH2JzbinfMkNmTKpUMsQgLyVMM1VCSCw",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03ed1e59ac4dd9c2c7e405b0c2e2ab8120337e148034036229c5f39ac80db59357",
+  "service_like": true
+ },
+ {
+  "address": "17SaUwetanQ2LEuBpvMn2KvJFwhPEHwCta",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 7,
+  "spent": 7,
+  "balance": 0.0,
+  "pubkey": "0257ecf0cca33cf3228fa43b61cda16149943f8e20670e81760f54b6b4d1591a9e",
+  "service_like": true
+ },
+ {
+  "address": "1GZKXp4Yhc8cr1gZhXSqNkdqqFDLQgNT5d",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 9,
+  "spent": 9,
+  "balance": 0.0,
+  "pubkey": "02da5c990b2df65ced7198b69140c58e6828f850cee7649ff0deff62bb8cb023e7",
+  "service_like": true
+ },
+ {
+  "address": "1DVse2h35g5ymytpSVjRYafEeDS1eP3HJQ",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 5,
+  "spent": 5,
+  "balance": 0.0,
+  "pubkey": "035f7d5bc594eb9c9574bc8ed3564bb6f25d10e34b4ae2053a11e43394623ad685",
+  "service_like": true
+ },
+ {
+  "address": "1NnxgxhuQKrXQ7Xyo2KShX994y9eMswVa3",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 4,
+  "spent": 4,
+  "balance": 0.0,
+  "pubkey": "03f122076dabe4c0c6269a2b93b5f984b8e2dae2ea63bc3f0dceae6a5b0f2f5e63",
+  "service_like": true
+ },
+ {
+  "address": "1697mXqsbAFSk8UZ6X1x6eND2S13F2NtUH",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 3,
+  "spent": 3,
+  "balance": 0.0,
+  "pubkey": "0228a42297333a5303e2e37f93e88236154131d24f10f27de2375dd0c9e7df420a",
+  "service_like": true
+ },
+ {
+  "address": "1KEvzq1Wv58YetFevLQaHuydQuH8R9Qixb",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 4,
+  "spent": 4,
+  "balance": 0.0,
+  "pubkey": "02005efa8f67e32877d9d3a39a4d29a97c6be1d0e774676b5553b169b1606f99c9",
+  "service_like": true
+ },
+ {
+  "address": "1Lze1ZoGyAz1bg2Pk4kV1vWkGvroupoRdw",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02b36a78a3c70bc39b7f84bd560c590d6dc4d29731bb612635441806d7e07e1eda",
+  "service_like": true
+ },
+ {
+  "address": "12xNeZHBnixspvw7xjN8miidV6aC4ZDNiY",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "033d1f237baccf24512657b5068f09c1c2c15ebf29a65ebe909a0b4fb7125b2ccf",
+  "service_like": true
+ },
+ {
+  "address": "1EVuaCCv52BH4btqid63dJhfbuVpPaMvun",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "047177e8872020c07e85bb93695cf4e4b23738c8fcba9826e2752e01f5eca86e8ef7a6a4cc9f919a20614370170bfae5c207d87f6a8040d81f19181c20bed61ce3",
+  "service_like": true
+ },
+ {
+  "address": "15atufCGFBq2ZHkbTrgTvH6JJZZefX3wcj",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "04a4fc2e60a4638d928da95677463189837a9eccd62364c1c40848371ed6583f6545ad98e48d77911d4dc0df987882cc778e56feeb7f5f34243dd397194f2e630c",
+  "service_like": true
+ },
+ {
+  "address": "1DfL7my7ZNJMTmGUJrHxqz9wdZNnu1JcGs",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03c8a04ac915c49027b89d01c002fd9d04b88a968814ff2ae7700501760af912ae",
+  "service_like": true
+ },
+ {
+  "address": "15cppM4GsZzDDraPgN3aM3ycga7nY8K7oS",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0374617d32a7c80bd3eb920bac16cd42123e5b367e438e23042d4f3e0ce0367091",
+  "service_like": true
+ },
+ {
+  "address": "1PDbXKkT5t23jaCjPzmKtptN4WCc6vsFEN",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03b03a16f3b6d9714adda4b46bdb70fba5aa033b1abc750481ee78b148e830f6c3",
+  "service_like": true
+ },
+ {
+  "address": "19gLD8fw8RyyUcPd254W23HHMvtnFHTWxN",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "038fac3d2908e98c90cd4dba107e3df9eb92c40532bcb1afbf34ebb352b28cdf7c",
+  "service_like": true
+ },
+ {
+  "address": "12WiD7wnrpNAEvx5XNJU8vUcsEu6wfzios",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02a20f1a62f781112fa2e4bdcb0124dc1728f79af62d1064323155302cb4ab5524",
+  "service_like": true
+ },
+ {
+  "address": "1NYTjoX6yurb8saCFy3vsuPuugqcuVxfcw",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0400b8f2f32d41e004f74b477eccf856c65336a627bd3e14860756f2fe57b1ae82ae5a9d402288b95cd28d31280ed6f343517025953a29141543d436fee3764a93",
+  "service_like": true
+ },
+ {
+  "address": "1N4aAKDUuBhHPGz6rA7uBfgycRtGxR3RMC",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "04a0cbe65e2e6f7a00cd736d52c23fec64823138fa778a8e36468234cb293512c7388ce29084720774d57d10c12266b29ae72f12478108c7102416381e5ef00282",
+  "service_like": true
+ },
+ {
+  "address": "1JQcgtesxPztfc77PFNB4eBuoMG46pFA7C",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "04718d8db0116fa424e3deb619c679dff6be80d260098194324b2df7ced8751f26b20dfa00117c81b99e041f5dcfa831b30380ee01711935e932225312a8b88e24",
+  "service_like": true
+ },
+ {
+  "address": "1GfJgNsazFqZNAHLNZBoie1MDGQV5Q8LMZ",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "04b20d3d893dec6eaf3db18783178a2afaea51cb63c8f33af58a6d50ed162eac58d4a0f44cf9b3e5202421fa454508de6cb8b5f33aa10430e5daa5ec1ca3854a83",
+  "service_like": true
+ },
+ {
+  "address": "1F9HHmKDVDnzppwfjAKD4qa6C3nKkrV2er",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "04c21ec736f23635236e3d389d3705d15072c8655dc26ce508f013c5a272c879af5073aa5a728863efc830d234e75f8b27b03050391296f91b510c40ecb9b51f10",
+  "service_like": true
+ },
+ {
+  "address": "1MyG9GqsPrwX3A23meWGNtiReoEwervCaf",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "04ee46b56b6a913bca140ae3cd453c4fe325eacba1a3838865e943ab62b6474ac30337bd944997c47fd2e845852b4b6f6749fe203146b0c16206d0a683112248bf",
+  "service_like": true
+ },
+ {
+  "address": "1MW2jv2Rr1JcUbdEjk5ujuQN4vwFjAr3V5",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 17,
+  "spent": 17,
+  "balance": 0.0,
+  "pubkey": "02a02164dea94561f2a4e92f17da95c16d7fffb748cb9d40bb4c20eef75ec6b5b4",
+  "service_like": true
+ },
+ {
+  "address": "1AiSR42droRqBNUEu27Sm2nYVTe4ZHpeYs",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0305eff634ac87b364ea88e5c27153b0af1c28da6c7139ade23a16a4b779fd739a",
+  "service_like": true
+ },
+ {
+  "address": "1NMiaxzzYC5Yy8zGZtc5SRrLLodUMi63Sn",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 224,
+  "spent": 224,
+  "balance": 0.0,
+  "pubkey": "03575ded3b24e27f5a65de63077761b2bfe26edf7c392dcd61ed1ace9218501404",
+  "service_like": true
+ },
+ {
+  "address": "1L2gL8xWR8kXXPD2TBDrQsirh3FnwG3tTU",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 211,
+  "spent": 211,
+  "balance": 0.0,
+  "pubkey": "035b0387495c99e838ea222234f78099e1494785b9edc4d68adadedc1c062f4c3a",
+  "service_like": true
+ },
+ {
+  "address": "1GmxpvKchUwnXtokfRgk4wcd9RMLZhav9t",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 38,
+  "spent": 38,
+  "balance": 0.0,
+  "pubkey": "0305a38091615533f7aaccec8c356b165c3b4ff6368ef4841bf956a1a2c2c45414",
+  "service_like": true
+ },
+ {
+  "address": "1M8hAc6dYNXA6mTjbPpv1MqPrJXKiBGVQc",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 15,
+  "spent": 15,
+  "balance": 0.0,
+  "pubkey": "031bfb94a7656fb8e3363be4950b8d4aa932f5a87986bf261454dc398f8a1f9a5b",
+  "service_like": true
+ },
+ {
+  "address": "133xHAG4YcNNtNTzxCKRJxC9qquFhZTbde",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02c9bed3ecdff0d721dd6c785f67d0fbaf7b0605f7b283cdacdf24a2dfc453308d",
+  "service_like": true
+ },
+ {
+  "address": "1FroezUUCXQ4T44yC7tuj2Xa1q6Bw5bUWJ",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 3,
+  "spent": 3,
+  "balance": 0.0,
+  "pubkey": "040d886530e295c3f41b5600a93619053cfc7b6c4dec2bd12dcddba3ca908b178d02220c691606148b8770011c12fd74a323eedd5003e0db141fa724cc876ec65c",
+  "service_like": true
+ },
+ {
+  "address": "1FnTaaTgw8G8LHodmzAvc51AfdrLP19hg9",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "04a0ff51a076ef47e3981036240db7f459f38eb3ce895818c3feddc7c13af7f46d7a5a6178fbb7724f30469cb954bb04aadc30f30c6422b6df13830f19ec91528f",
+  "service_like": true
+ },
+ {
+  "address": "15qwP2oQcigab5KBnFdpfCZobQEeYRjwh9",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "046dfe1a6dd475be3ee13c9bb3686058d6a9ee5b56212a0dd084872ef696c318c58a66435f4f55d4d235189735cf670195b1ef7ffcc554f24bb303b354d093183a",
+  "service_like": true
+ },
+ {
+  "address": "1DUrh5TjDhKKpCJjht9TMP9fkHg1twe7Jx",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "04e03b3a558a7cfb5a6efb16fe12bb6d4a05352b85fc7d2ea9d991bfc57a709003c78582eddd90efe176f130bfec20e1e55558ba20cb37dce79193ba7f44f85d51",
+  "service_like": true
+ },
+ {
+  "address": "15QdaBK7zjXcrHB2xKZupH2NxShx1MsmPM",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "04f471546854155c28faf10ea005a7096a2a85b6eec34181ab3d9574fe930a7ffff266d2468b77003e1f3f18aeb69492ca1de343239848251d9a7c5e9dfe00d435",
+  "service_like": true
+ },
+ {
+  "address": "1noTA6GTbxVTY7oZxduK2XfNKG2cssqJc",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "041949ef2e514592f00a1302a19e96091dc4a65583b6f21c949119ce96082970f3f6cd9ec44cd78fa83810031391a9eed2d19054621c6ab1226ad74634fa4a3076",
+  "service_like": true
+ },
+ {
+  "address": "1HLfFLV7hfdBzhJPKch83kDcv2KQPkKYHv",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "04c56800ca62fba6a9f6e75c3fa5ec41b2884333c52d9adcb7cd10eb1f43854a6c0bdd805a8d922c8ea4cdd95e87faac94b89c2f02e45344466ee9fc211c8fd716",
+  "service_like": true
+ },
+ {
+  "address": "1MYfSVF7yDvcYLdYAVEers1NMu2A7LWFqF",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "04592af37fb06dfcda726341b7e7725e6e3247b82eeeb0bcfebfc2816261041f6f9ed1bf01609f1d7840b80f9c16a257b00867f1430d099b5f30bd17de1002af2a",
+  "service_like": true
+ },
+ {
+  "address": "17oyUydwiXMKuc9zEEAxZYKycp75bwYhms",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 11,
+  "spent": 11,
+  "balance": 0.0,
+  "pubkey": "03a74a86e90acc299090cc4c47b1e8a2682bc6828431f07f4936701fb3c523957f",
+  "service_like": true
+ },
+ {
+  "address": "13DqqJZCz7vQuhqaUqRVA379Wj4SdroNET",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 460,
+  "spent": 456,
+  "balance": 0.00166274,
+  "pubkey": "049454dfead79a3a126fbf8584d9b55f2003692b521d24e74ab1266ed94ef8178c067b55fc843b02430ff162cc138b0009d0949d9586e9418840e6269f2b2c78c2",
+  "service_like": true
+ },
+ {
+  "address": "1D1ehKGNjNArutq13tKxZV1vYAiST8xwEM",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 2,
+  "spent": 2,
+  "balance": 0.0,
+  "pubkey": "02ac304173d7e0cddfaccf4128c94885a088eaa3181fb690530b1f61833489de20",
+  "service_like": true
+ },
+ {
+  "address": "1A323FWHyyvCW74d9ky8uWdymJ7Y1YA5sp",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "037c83cde6cf3007b3fc7767cf31a512c9e2a88ee8cc3a11d479c56a2c95c45435",
+  "service_like": true
+ },
+ {
+  "address": "1CwKXWnGmkxbFDkhuJ8dbdeo5frCdkUF5V",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02588f7b3bd673c9ac4dce15244a215d6561e3b8ff618b11d2395896a3e51e6392",
+  "service_like": true
+ },
+ {
+  "address": "1GQ1LpaiCNNZ6CkBqWo5okbf3BjtwWquV5",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03eb0d8ff8eec03bb6da1b556e46f8d2c83a6710528faa3c70109c65102b7c7a87",
+  "service_like": true
+ },
+ {
+  "address": "17mRgfUhTj1QBm8pxMCQPzRffsWtzACbST",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02b23d326cb0eec1e96d1fe98c6dc831767b02aff0aa0935ee709c8e917b5f5328",
+  "service_like": true
+ },
+ {
+  "address": "1LYHMN4PctKrbGh45HVp37MSWM22HB4HR4",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03015010389276bfa479efa28213d9dff3b55633a05d398f4722766b46cfef6cf2",
+  "service_like": true
+ },
+ {
+  "address": "1Cm3bjwMTkoSZxCJnHkovKwe9RGZ1SvaiQ",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02ddfb9d87ad4b48d3f8a61ce79d56f1ec23bb80bed4e1ad263f0d7a3ea6f6f1f8",
+  "service_like": true
+ },
+ {
+  "address": "19YhPgX4KfbZR8dGa1S6CaYh2LqRmNt4yS",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "024427c0f5f62dff1ab915e73c2618e7602f8804d8339a94527736132e2d40d6a7",
+  "service_like": true
+ },
+ {
+  "address": "1R5gYeSaFG8jNXJLqCBsFn2JZpCriisq6",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "028d7f5087d0a4c656aa610c3d5063fa338b2fbd79401d40ffb40f7111ffe5ae36",
+  "service_like": true
+ },
+ {
+  "address": "1N8zitgVMnHxqpHtCB1BdfXHQiF98HPRAf",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02cd6d4ff57b7718ed5b34d6d3e05e99bfa3ce68f31946a8d75d61a7eb6da202b5",
+  "service_like": true
+ },
+ {
+  "address": "17VCedcyjm2DR5znUF5bFDSNqXNMoPfYzQ",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "042441413e09fe01f70af1f7b28b5a5bf3f2fb265badcdca8eba6bf4a53d8f2c0a91dbffcde1f4dca2eabd39e76b5d30e1f6eda693524f565fd7b218d1443fe1af",
+  "service_like": true
+ },
+ {
+  "address": "1E6bKnLWSJb8nFuRRpipNKrLRrdGYydP3o",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "046a3b55f8a6d0923181c52ad0238703aede07e3ca2330488efc2d3ce84c4b15bd309f432f17a4844a859591272695760a56dda798e1e523f476111cbcfce80f9b",
+  "service_like": true
+ },
+ {
+  "address": "1BjMt4zYseoToWpLJnK1H7kC5mBW2TH4ge",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03cc1064aa8f925097b23e8b6e90dda87be7f9e3564790b00fa7f5356d6e4ad3cb",
+  "service_like": true
+ },
+ {
+  "address": "12Tf87uTDnRhRYJahvFW33TbWrMNAHFYGU",
+  "roles": [
+   "ancestor-8 of 2015 funding (256 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02c989f3b6c156a384a9714beddec101ded48155eb06e69987df7adc4fd501103f",
+  "service_like": true
+ },
+ {
+  "address": "3QPS56QDaFsGfAEhBkcCY3fGxdKCgBDoXj",
+  "roles": [
+   "ancestor-8 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "037862318f3172d95f7910d750a67227ebe0a45186ba7d6e11c93c8454c4e54487",
+  "service_like": false
+ },
+ {
+  "address": "32niU5Cns9nLwqzT3Y4zqtKhpMuHjvRYtC",
+  "roles": [
+   "ancestor-8 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02754ee06cfa1223742faa4cfae7f1d86059032186407763199242c1774ac2d091",
+  "service_like": false
+ },
+ {
+  "address": "1JUZq2yZeSK9kt5RNE8SVDffmCb3qDkz6b",
+  "roles": [
+   "ancestor-8 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 9938,
+  "spent": 9938,
+  "balance": 0.0,
+  "pubkey": "04678ff1597184cd3315140830d59f6b0a407d87d512b5e75b99964508aa10278de30dcf8046243c5544e960cacd50b873aace42ca8579669cf9a4d06048cec9a9",
+  "service_like": true
+ },
+ {
+  "address": "1CUUHMdevNmoG1gxTC1jjS5nbc4D5W5wiu",
+  "roles": [
+   "ancestor-8 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "026058cedf5bf8818281c7295a2c09494f3f4753dac3d8ba59bc58d9e1d98095da",
+  "service_like": false
+ },
+ {
+  "address": "1BvT6L7w864MTMdPP6vemq3y1tGUyr8Kma",
+  "roles": [
+   "ancestor-8 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "032ed4c359822c84a85c9401764ae6517278829bab6e72ac2b658a479e4753ce30",
+  "service_like": false
+ },
+ {
+  "address": "18WYJy7h5gXm1VhF12WYJzFFaYtSvLqTvS",
+  "roles": [
+   "ancestor-8 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 874,
+  "spent": 873,
+  "balance": 5.46e-06,
+  "pubkey": "02cddfe4527fa37014c84a8cb69a7b497cdd4f8400180d0eb2d72911518303a4c3",
+  "service_like": true
+ },
+ {
+  "address": "3KiFHBTATXkGytWF5B26ciSi45uHd5uKFX",
+  "roles": [
+   "ancestor-8 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "039933afafda6fdf080d7efaa69b20f586e54cf6138f6b670a4ce78ce043584740",
+  "service_like": false
+ },
+ {
+  "address": "36smmFQkHiw9rcQfX4AW1U2P1eA7pQ2sVF",
+  "roles": [
+   "ancestor-8 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03b509a2787fb13ac184b8539e50cbd998d09c0d733f46099d2e58d3ab84f2247d",
+  "service_like": false
+ },
+ {
+  "address": "3GsLAZ2KS79sctMejbeJsETfMzPNHVVdsq",
+  "roles": [
+   "ancestor-8 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 2,
+  "spent": 2,
+  "balance": 0.0,
+  "pubkey": "02476f82fb46e6ed528da79855f270716cfb39613793fe5a63c342a1c65cd54a04",
+  "service_like": false
+ },
+ {
+  "address": "3LhjcQind3JPg3ag7ZMnpZQ6jE2i9dB781",
+  "roles": [
+   "ancestor-8 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "031d9b8776c9a5f0ceb03f7d9466c1b33672c7907fc5a75646cf55f076b0fc6273",
+  "service_like": false
+ },
+ {
+  "address": "1Mwsfoy4GGXT6KNXvD9tzPiakAkjx4YRzH",
+  "roles": [
+   "ancestor-8 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0351178b9ac7caef8eca7af5f48ff9377962d1f8ec3925511f17d88cedcab4bbaf",
+  "service_like": false
+ },
+ {
+  "address": "1AVFwNJHEVzywFxmMuc543tP4qL1fsqWLt",
+  "roles": [
+   "ancestor-8 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0248fcaff9f4af1d18b53148f9e03ac06467d48a31b1fea7d3b86b9f8c437fa0d9",
+  "service_like": false
+ },
+ {
+  "address": "134sxJfuXubsCsNpT8vgT7wpAmKK1ReX6s",
+  "roles": [
+   "ancestor-8 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 6,
+  "spent": 6,
+  "balance": 0.0,
+  "pubkey": "02a866c0be2a3b6d2bd4dd710b47d17134338db62bfa875b8ff1825eaf8d886418",
+  "service_like": false
+ },
+ {
+  "address": "1MF42uWZNtkqQ2J4UGvH5xWp9V9YhvsC25",
+  "roles": [
+   "ancestor-8 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 2,
+  "spent": 2,
+  "balance": 0.0,
+  "pubkey": "036d9751f8c4e3c050ddd216aa17f335a8a4f78b94c2d9e24b840e3317aac0cb4c",
+  "service_like": false
+ },
+ {
+  "address": "1Bdbte5SqqpMBh9DoAWH5NNwGx2VCUbv79",
+  "roles": [
+   "ancestor-8 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "026bbfc4edb70cb70d1d57631ed8ea4de67859d0c4f186904b9981f1ecb15075d6",
+  "service_like": false
+ },
+ {
+  "address": "1KRquCvF1evQobMQ42uVHtgCZMQ4Ahciyv",
+  "roles": [
+   "ancestor-8 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "025c55d1ff3b55894e9f4488ca717af235bfcb6cdee8baa07e9a1e88b7ef274d88",
+  "service_like": false
+ },
+ {
+  "address": "1Ni6T3PEwsK6A2BqS73X6xuLo1hfr2ExXt",
+  "roles": [
+   "ancestor-8 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0239f6e23333c78fd0f38ebd1723b33c592b5d1a4b027e0d1daad44c22ee5d445c",
+  "service_like": false
+ },
+ {
+  "address": "17tzRdFcvVQ6uZuNiYTVphvGSvQj9Yu9kH",
+  "roles": [
+   "ancestor-8 of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 28,
+  "spent": 28,
+  "balance": 0.0,
+  "pubkey": "02fffee90bee1b36d7238846443f721fc06808c6643c6617a6d92fb552732429b1",
+  "service_like": false
+ },
+ {
+  "address": "1JkqBQcC4tHcb1JfdCH6nrWYwTPGznHANh",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "031dcf49b480cee5f1a7200ea94795a1c7f69e144f11f031123c14c65077823dcb",
+  "service_like": false
+ },
+ {
+  "address": "17DTUTXUcUYEgrr5GhivxYei4Lrs1xMnS2",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03294d33f5e7b98c885ff540fd3f747010999f640d8fdb021f5a13ef3d06c36a58",
+  "service_like": false
+ },
+ {
+  "address": "1H6e7SLxv6ZUbuAaZpeUdVNfh3cKBWJRmx",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02ee740ba74efc08bf39d01ccb7e34f50afe2f4677a9e09755e7fe3808e0cbbac9",
+  "service_like": false
+ },
+ {
+  "address": "1LjQKurNtEDgMdqeCoWRFhHp1FPnLU77Q4",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0312163c60548244d6e565bd877b98808b73830c537efde357c8b5f8c623fb2028",
+  "service_like": false
+ },
+ {
+  "address": "1F7ZjibYug9bLW3YvkkwBZLrhfLtNjgYrX",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "037c6fcde6a2e0fd57ce21bb4352f7bb38859d2af5388b27ebfed107907e060c5c",
+  "service_like": false
+ },
+ {
+  "address": "12BtvPaamiBCpXmoDrsCxAa1b6hMRnASZ4",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02b02f753542201387815c4754b66202ef6dc4b3415e4c4cc826d6534394702f50",
+  "service_like": false
+ },
+ {
+  "address": "1AvLwGpkwTZH4qiwy1L4v6TuWXLMNrATN5",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03779c01b4badc5c3883f6ea2b93214a24796154c8eb967695dfc802bf074b4941",
+  "service_like": false
+ },
+ {
+  "address": "1PojqbbzJHnn1X2mv6DCECNLUaD2nMssDp",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02788f82521d7557d30c9c4f8bc7098cda23c59729e9cf96057ea1dc49799bd399",
+  "service_like": false
+ },
+ {
+  "address": "1G3uazv67BcKRmPFvgvX4ijBTa2898cvCm",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "026efbd90dfd84d5bfb7a8ceb2755155d1d39a16be88db336ff18a8d844a269cba",
+  "service_like": false
+ },
+ {
+  "address": "1EW9W5sGdxVDxAtjRbCjgkZNtPH8ZzikeP",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03e56c48f1bc4a6d06a2e0a4ad53c7674403dbfdaaeee3ecc86aff294b04997d61",
+  "service_like": false
+ },
+ {
+  "address": "17zzMMnj5h8StLhnrXpw8iBP21uujNC4Ap",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "021b6f7d2e3d33f99fa44985c68ae85827282c64701a2c663bd81e18a229a3562d",
+  "service_like": false
+ },
+ {
+  "address": "15LJKhwQJ7dYMBZX1mktskZqxX1aUCibkr",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02ed75f534f534c536d0732acd70af3e0d173c1f6885381edf8469d1e5a4cae716",
+  "service_like": false
+ },
+ {
+  "address": "1Mkodin3C3drVaV9JNk1o3i4n4gVGe9GVx",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0233d5bd5790203edab5c63839bee1765735c35254ec24f3073f65d99e1dabf90e",
+  "service_like": false
+ },
+ {
+  "address": "1C6dHU1gQtVUXZmeXQuQc3EgDJbiLbxFZJ",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03c11209f91946eb81b603d046a296f5754967897d471980fe43ea1aec8bf2ad7c",
+  "service_like": false
+ },
+ {
+  "address": "1DxZJy7AkqLVAQ5rtSUKfrR3yPE5u5ygk6",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02cb5f1f0d3dd67f0f162353490d98219982f5095bd32daa6c020806cf59ea2c2e",
+  "service_like": false
+ },
+ {
+  "address": "1NcytLwdqJa8DsQPa9NwkxJTQcx1rZy85A",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02ba9f479c758f5b2842ddef8414e70acfc943d2584258709352061a100e410ee4",
+  "service_like": false
+ },
+ {
+  "address": "163vG9mKmAsrvmq42MBDPjf9axZyEgBc9R",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "028ae59ec009a07fad636a066f72d567a1fe9a37492b40688c2edfe18de00f284c",
+  "service_like": false
+ },
+ {
+  "address": "12ATwA5VvoPDinSymcQpCAXPLApAVLN24z",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "035fd8708ca357691c50a49b0d339227360049b3156c3d32d1c54a315393bda35e",
+  "service_like": false
+ },
+ {
+  "address": "12fXbBE7kTfqYk8dYyU9bw7XfKVwEqXnzg",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02064bbc39fd98afca5085c5e9a006c8bb0e466adef24a911e635f835c8061c15f",
+  "service_like": false
+ },
+ {
+  "address": "1EkYsB1C7deWxiVUULeZpr42AdYWhv4PEX",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0329420514190479e81640f967e686e2d950e231edd021fc63a17193dac2969a3d",
+  "service_like": false
+ },
+ {
+  "address": "1MPQyhXBT2FpUMCiv5YX3yacKvmc9P5x6S",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02cd62a1cefed68821c2fc3a0e763a0178a323cfba08cde5c0321caa644f1052de",
+  "service_like": false
+ },
+ {
+  "address": "1GZyxmpgtRJNaW1zEhPAa81xZDEJSdwbbZ",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03f7aafd4bcc8478efb01ff830655d88cb60399e3179e24eb0146b013ee5c4d6a1",
+  "service_like": false
+ },
+ {
+  "address": "12E2HWQVHzuGKAQVvPUkHWwibAJfnmcHW1",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "036d249dae9d1f3afe5c85ec6f34561a2373d6c0b6cfa8ca1b4ae00d1937e7a59b",
+  "service_like": false
+ },
+ {
+  "address": "14J1fXY2E3fbxjp1zpfqRhk5BNQ4pb97Rs",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0377059f597c2e14d648807db27c8540f7cdd7e176c5baf979dcc00f251bdec6aa",
+  "service_like": false
+ },
+ {
+  "address": "1HqHHuFzZhtTtyGbAWCS49qGnCBSEhBSFT",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0208ce81549c729647d7747a6a7e304104435fae445afb4fa90fd384f2640f0ed9",
+  "service_like": false
+ },
+ {
+  "address": "1BJXBDt4e1uaorXPototucUGNRme57nAqt",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03ab1c8c3d6b773758c2a765dd33fa0b9804c55754f9a9278a158a2d02a6edd1a6",
+  "service_like": false
+ },
+ {
+  "address": "19ct7Egfi5j6jSefj8X4d5eXJQUmyhtXjC",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "028393d6e394d960b1b7e239707d87595f85b7bdca480dafd39d4797124740d9ef",
+  "service_like": false
+ },
+ {
+  "address": "1DyWSY1dA3wyjo4eMuQCPfrm3dV96xDDSU",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "039705ff013b8514ee6eded8af52879598d19306f3e252f153dbfa02baa06d7dde",
+  "service_like": false
+ },
+ {
+  "address": "1PiLrDyeXtncnsvcVAGGcNnpzQVRCG3fwS",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "027a9e387d83df7847566373ef601f2b6dd9adbaf3fde5582199ed71f4b8ca9e08",
+  "service_like": false
+ },
+ {
+  "address": "1HUoYzoEn2a4WxKvnYYbnR9GKrVqAfq7oY",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03eb37cc02df3bd83f67e581116b2e08b1b4f27354a21d6345fe17484f4ba2ab8a",
+  "service_like": false
+ },
+ {
+  "address": "19vnME8b28SzJDuEFNShAG5JCR63V1zzV",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03bd9d14ad1d7d2c3d1f46b5f2c82142a5c0784ff4506c04ae0a99d9737e1630d1",
+  "service_like": false
+ },
+ {
+  "address": "1GWTEv76C8cusq4h5gV3rLjeFhBkGBHSKg",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "024e1799de117b044ea4778a77f0a6267bb84b182f55093be7ed0e8f703b74e5bd",
+  "service_like": false
+ },
+ {
+  "address": "1NHh2fQDm7KyBs8HRFkVtHgMzkmufk6mNW",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02a7cbaf2cc78bf6686b7a2a2cbcd2d0ed6e03e56f481e18212508364b682ca711",
+  "service_like": false
+ },
+ {
+  "address": "1oW8VFRNVKhbzzq8NWNutDYDzv1CzAHAj",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "024e951c7b8d0630a84f5f79b6a8ddae01ff2166f322fc4558d20c97aacd8f2839",
+  "service_like": false
+ },
+ {
+  "address": "16q15tpaHQFUENUmRPLgiidCMWLcDpVEgs",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "029cfb4b5b2830188161b359fc1fb7ef3023b3212889ee8565a7989de774af192d",
+  "service_like": false
+ },
+ {
+  "address": "1AH4d8Bss6eFyugZaN2qPXMBH69T946dSK",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02e56e407ea984475f21ee82e96822c541967dae2a68e85ef883ec46c7646d6f67",
+  "service_like": false
+ },
+ {
+  "address": "12gDPuHvZBh6FSjyhHhyDDkM38Y2wyDGQt",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "028ab0a2c3a3413f9ea995a2bd5c7a72b79b2c6f76bf7cf49d840028a618046fd3",
+  "service_like": false
+ },
+ {
+  "address": "12jFRwZFUrxUTtuyVzw9FNJsJa7mjBgfca",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0245f61026852cde2db15de4b129ad0e3c54aba03ed9b0f676eb9dfb680277d569",
+  "service_like": false
+ },
+ {
+  "address": "1BNkFNU3eJz8jDfTkTwe7XmF18BfQwfqW7",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03ec5cd862b5699f09e5341b4315b2a548024718fe9ce70d205dbfbbface07d7ee",
+  "service_like": false
+ },
+ {
+  "address": "1DEDEKJVEmXvEqwg3wbq8c1ZNobo4tNw4h",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03fe993e313ad3c5e8ae4d7e99a8cd5131ae04896270e48082d5965dba9616032d",
+  "service_like": false
+ },
+ {
+  "address": "1DA2RexqNkbVhzfkmQDHRMfKrdesgyMMdQ",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03346fd1b1ca7a7eb88e4b7af48d678a42e8ca8d607d8e4e2967d16394c360d014",
+  "service_like": false
+ },
+ {
+  "address": "19Ho5YB6y8qRCdUMxWpXqrm8N4AKAq7ZWS",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02669d985185d1894541f6ab7ea7fd57dace5bf97f2c73736b205ab07a5685354b",
+  "service_like": false
+ },
+ {
+  "address": "1DVWn7PuRBmsdTBKiboBdSREHdAtSoN6BB",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "034fd997afbe4608f743661ae417c5706b044d9d5532a51aef5f4cb244f5f5dce1",
+  "service_like": false
+ },
+ {
+  "address": "14CMU6qvv55Y7xJdVw64ey5yfUP4BZAjct",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "038e2790adcbe6d0c89c0c23763c52608ad0fe2a757e9910550f45bfb1855ad54c",
+  "service_like": false
+ },
+ {
+  "address": "1DHL5NuXPjwDsNnXyzAgZTAMM4aYUc1zFW",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "030fad8d46d7a7f4e5b5c76a09a05166c8f7515651f0c73bf8329353f412699c99",
+  "service_like": false
+ },
+ {
+  "address": "1UwsEPMF1NZTWJAuymsLVJpqetBZ3Q9sJ",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0291a1ff9572bcbafd8dabe85c90e10a458a4f71e759747918d4aa1f56af8a66af",
+  "service_like": false
+ },
+ {
+  "address": "16aELF1f75o464ZhtAZUwbc4ctFQZxS8qi",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "030fb4b479aaa51c07c2f660501ccf73a6aaef84e2065ad1dcf97125a5d7248258",
+  "service_like": false
+ },
+ {
+  "address": "15TJ3wPvdviupvKQFm8hLeXSzeMSq7LSJ2",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03762e52fe281f880581dcd00bf80a7fd949af3439b479aba16b6fa5b04733f4b4",
+  "service_like": false
+ },
+ {
+  "address": "1JgrGoQbvJS7UnX6j4myiCxo6Q3gyo5Ujk",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0243874c891b55668295d5fb6a734fa8b9c4f73eb80cd4f3be3ed7de520e974e9f",
+  "service_like": false
+ },
+ {
+  "address": "14Xm5DjBUQTJCzeGhyrhVsxkK8p35srk1S",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03628e54188ca8c8c0b73fdb12064f195417f9fd98a7b0763d83eda2518c526f44",
+  "service_like": false
+ },
+ {
+  "address": "19yhSoza8oK3ioCSydMuAGJs4Mm3FwCTht",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "036f164c6a628d94338a9dc9dfc1cc2f91a3a9382c198bb05f51fbbc34c6cc583e",
+  "service_like": false
+ },
+ {
+  "address": "1JXw9i8dEZGH29mUiuKjWXK9L27r2TerLQ",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "020df4abc8bae9c000ea2357b014befe3e6d13dd63951ac0b2b66b37eab76b7ead",
+  "service_like": false
+ },
+ {
+  "address": "1CNNth43uiVypxHmZLC8hWZsb7UiP7wSkY",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "024b5c68b748907bc07afa2f4d9cfeef5524d0675ee4b5a39f2e9e7b7b85f2bd9f",
+  "service_like": false
+ },
+ {
+  "address": "16ocVeZDpqcvyMvzAH1r2LR75uEzRhkyV2",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "033fb8f6eb9cd60aca4f5ec48c7bd81fbe2c221c7701bcb93be5f50a810055c965",
+  "service_like": false
+ },
+ {
+  "address": "15x3tRVyn9SRaxfbFUzqETmCJiz46Vs247",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02dcab1861d56d3b6ca4d741f885c9f7b34d91b460f90b3dc1983acf701ca8092f",
+  "service_like": false
+ },
+ {
+  "address": "197K7MdYhnN88gcJouJRxMiSAHHfWuPrXC",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "022f02cc3458301883c9bd15fe341384f94ce48076f836815f7b89901f3a27abc4",
+  "service_like": false
+ },
+ {
+  "address": "1MDsNYfC4LErgwUDqfQ5BgFJqv5bs4Frkn",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "023dccddd7460b8000e6ac7bb14f98cad9aeb4b4f858c2a655738ce141d71224fb",
+  "service_like": false
+ },
+ {
+  "address": "1BDTXmiyyzq9i79RGGTW7cjmYJbxKoV27e",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03d8c17e24c72388998ebe82837a555e57d1db6162738cec8963384c367e393906",
+  "service_like": false
+ },
+ {
+  "address": "1EiJ59LPWDezXwfAGFTcoEKdNhvRTriBXy",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02ef830a543b3b50c3fc7e42bbc0938039f8d3e19a1e862012f281c51f3581d77d",
+  "service_like": false
+ },
+ {
+  "address": "1rirV4Y2NxGwKNQNojJhz61jEctni8fvb",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "022cc796d5a8ec2c871640152a0db6ffd2b4ea957c8f5ecf706fbc383fa5ad7696",
+  "service_like": false
+ },
+ {
+  "address": "1NxgWntAdMugSNFHEXYizYwk3UjxKPxcDF",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "028a874fe6f1ab00358d0b610d536fd67f049c98069eeb35585549250ef9fff4c5",
+  "service_like": false
+ },
+ {
+  "address": "17A75vEkPPVeY9MMMXUY9M2JUHbbNyVAWC",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "021536a0aa8cdb5061debba4f236d311a570f6de6d483419fa23c147f543765602",
+  "service_like": false
+ },
+ {
+  "address": "1NUVBXgX35Uax4fpziV7VGMJyji3mUzZbt",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "034cfb3bcb83ed739ecc9abc84f68ffaa430f2d685bebfaf8cefaaabcd2b53d984",
+  "service_like": false
+ },
+ {
+  "address": "1F6yxcbDzjumeN77DiABMXzPcvtAdnaoPF",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02a1cf7a8cb1bdd05701aa57ef6e5a9ce28950d93e2369d5fa11ec5bdc8d4ce9d1",
+  "service_like": false
+ },
+ {
+  "address": "16YvGEYhAwjf2duwvH8jbFMfVCnY6XiQTq",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03e1819c7597f314943bf847e6ec36c4c95ac1b3ead9948b90e9a2729357712ff7",
+  "service_like": false
+ },
+ {
+  "address": "1HtbZg9mPjYcMDMDNyXaFjHX5e7ZPUwWAp",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "020d896eac113fac98c2a4a44b1488087b3b4c2d8f2563d2a41789f0324ad62cc7",
+  "service_like": false
+ },
+ {
+  "address": "15a9nXpjnQzw2o5kmvGyKzv7anZkYFHwdK",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02f73589feb03e8ed1de43cc7748111e2f1d73a2a06679951addeee165d378f23e",
+  "service_like": false
+ },
+ {
+  "address": "18zsQK8ezT32qCqgLJQMkhqyKNwpCP3JU3",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "037ac4f241f6ba433da340b08a081323a93c0966fca5c0757685005f8396b09628",
+  "service_like": false
+ },
+ {
+  "address": "1AaBhpTnfCin9nCrai2msXzCHoVmwkAe2N",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "020d64789d26c0363a2f284a1cddad7b6ab7dd41d65d5afe6ce7554214d4666518",
+  "service_like": false
+ },
+ {
+  "address": "13Jtm1mm33Uke7PbmTBYGNZGU7rXUsVs3e",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0216dc9de7fd808beff7fb3bc63767ef34beb0a51b4daf40151bc346781185ceec",
+  "service_like": false
+ },
+ {
+  "address": "18aBXRctVrWN9naDGhKrLdZViNfLJfCdbF",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0378a0cae3e8275916f41b25838e45a8f4c8829c3b1b937c1b1749fd77b23177c1",
+  "service_like": false
+ },
+ {
+  "address": "1MEEjd99pkEyCdiqVSCa8Jqjaun7fsEXaG",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03d9dd7c018dcf2a57a4d6c4299983c631ff8ab32eb72b57cfcf25be5366a9ed21",
+  "service_like": false
+ },
+ {
+  "address": "1NnefTEeKQQAts37cQHzVx8oPrUu8LWyUK",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "021b6cde6068c69f1156c044dabdf4cf4bef6cc4eb020ff0dc74e03633f72403a8",
+  "service_like": false
+ },
+ {
+  "address": "1FYbLcutmRbvu4yUeLmC4TES2Q3ChhXYY",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02d274968fe3b7f79074b9aad3221d71f42f4c0be9bb3a8e22e20396b9a63a847d",
+  "service_like": false
+ },
+ {
+  "address": "1Pp61TfkztZ9ckpdeUVCzbyA7vMqXAVsdV",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02df2647ed50cded7c031a702c72b5b09209e5fd4a48c7cee7bf847f88c85bf4bd",
+  "service_like": false
+ },
+ {
+  "address": "1PytbQzRaf9eTpGax3c6ofKwtbxaLLSNy1",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03e8c806fd610232c5b68d824b3a284e213e523492657965073c54ccaa8a58e8c6",
+  "service_like": false
+ },
+ {
+  "address": "194bRtNQVRq4xi26UJZYTHexvLXijpzp3e",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0288bc8b2d55ebc48d906478e7c37a78899632543dce63e6a9330a0a0c933e2095",
+  "service_like": false
+ },
+ {
+  "address": "1DxBvzRMdvzop21DhnDJv4xJDYFGVtu7KZ",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "039a1c77eb960be561f622d14ad0de0d2660245e629c1b11033f769aec28270b77",
+  "service_like": false
+ },
+ {
+  "address": "1QLHLvM6XKwygyWqo2cCPbfbf6woZzGEKH",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02dd983a8c8c8c25d3a16b014ad3e09b8188a3dc0333fc3d4b1504b1d3013b344e",
+  "service_like": false
+ },
+ {
+  "address": "1C8Hw6T5jypz92cNFr9Lkx4Xmr4DtP7zGA",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03d569cafd2c67ce649d9b3484ae8cd392ad7019f0b7963fac095912d545070466",
+  "service_like": false
+ },
+ {
+  "address": "1L7ZNx5gFPvdVPfdgFBnEUgA64woQwopqr",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03fbf9615ddcc9c0c9e88fb69ed62465ba694f4694f0ea94a7f3476dbf666ba56d",
+  "service_like": false
+ },
+ {
+  "address": "1EMhTbC4Kp8DYBk5zoLsTqZ2YakhiTgQYh",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0387d4589510248cb352b5c82d7ee75454c507574cb281042eaf5dee2547abd2b2",
+  "service_like": false
+ },
+ {
+  "address": "19CqmBBJ3H8FjxSSeSjv2Kn1cVQFXMY6AM",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0243609cd608d2d4744f3b11ff57875067ff2ac9966b87edc24e2daf2c784fc97d",
+  "service_like": false
+ },
+ {
+  "address": "1KMHDrCGho2QuK59UNvfjuiPdDZSgRbneC",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02eaa8294f7cba1ddf4a990032a2a6d9f07eef4309ab1a27a3446f591efe189314",
+  "service_like": false
+ },
+ {
+  "address": "1HzpmnHxpu4tCJ23ZS9TfWCoX8mXfpdHiq",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03c763aeffae32371612f8585c10710aaf7bf4a211a632c8a18b969a4f4e42db54",
+  "service_like": false
+ },
+ {
+  "address": "1LrrNP28PYg1N1z5Uo1gR8cmoPc8h4orBZ",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0396ba2cc3d83caad1a3970670557417e627b7cf32ba4e6219604f8f5e7ca09752",
+  "service_like": false
+ },
+ {
+  "address": "14D2d3WnHThUxyPhGoj2AabBTxpZcoHy3t",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "03c3f97e2896f15b0dbe0dcf12fe9ef3d62af375d683a4a93761d3f31785971dd3",
+  "service_like": false
+ },
+ {
+  "address": "18oqrdP6uBKsn57gvmWzLuKMAY4ShapiAU",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "031037fc1784819309a913864372322768fee8ba8c3d3bf0566936096dab4157db",
+  "service_like": false
+ },
+ {
+  "address": "1Bun4VzuBJ7SUoQn97dinVfDyWAS336Ldg",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02d1d5728abc050fc1c5fefc276616e50573139f89fdd01ac4ce2e52a19f945f8c",
+  "service_like": false
+ },
+ {
+  "address": "1Ruu3JwvGeSmhQV9GzWAnyLCz6g3evmTY",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0230465312b31af6b26c64d58ebc8a890c41f52f57a5c0eb305d83b0351c4bf968",
+  "service_like": false
+ },
+ {
+  "address": "1M3u4q5Q35qtQPmDHeubVbk7APYi3VVoBX",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "02ec2ca969860c67210de88b622f37fd4c02488d8ff9cc879ae91405523724eb0e",
+  "service_like": false
+ },
+ {
+  "address": "1CaTxB3YwmXZkDnTK4rRvq61SRqs48xmui",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0316bbf51b1574f580cd5ec84fe2371b4fd5644637b713f3a795474a1be794001c",
+  "service_like": false
+ },
+ {
+  "address": "1JqRqUPHHcQu2yrr8JZzxSYDx2jbZxEqFj",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0322ae607614dedc7261f4214dada55f1a0f11926174c3bf1689351c1783f3da48",
+  "service_like": false
+ },
+ {
+  "address": "1NKkjFvXmovmjwgUujw655n3BbEvnncyza",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0255d81444d53e97bf282ed8c505a686ca08d270493404c1db86e64b9494ee36cf",
+  "service_like": false
+ },
+ {
+  "address": "17PEUvQmgqPkkvRkMowoR1wRDXYzre4b9Z",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "030cea4a0ee0a03b7a5f77b85bb455b10979c2220f0e470ce5e0d4e0c786c04f66",
+  "service_like": false
+ },
+ {
+  "address": "1FMcotmnqqE5M2x9DDX3VfPAPuBWArGisa",
+  "roles": [
+   "change/output of 2015 funding (256 outputs)",
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 3,
+  "spent": 1,
+  "balance": 2.216e-05,
+  "pubkey": "029125aed5e5342de7c6163a4158a716ac982ba7d2ed85835c6ff99c68702ce710",
+  "service_like": false
+ },
+ {
+  "address": "1Czoy8xtddvcGrEhUUCZDQ9QqdRfKh697F",
+  "roles": [
+   "input of 2015 funding (256 outputs)"
+  ],
+  "funded": 6,
+  "spent": 1,
+  "balance": 4.232e-05,
+  "pubkey": "024b0faa9624763002e963816b2f6774df0dedd770896a9511cb5c9d90f674ecda",
+  "service_like": false
+ },
+ {
+  "address": "1CENDvi6tmKGrR8RxqwURpX9WHbbKip1db",
+  "roles": [
+   "input of 2017 top-up (97 inputs, 109 outputs)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "047a0e5ead1210acebb8bcc1243cdc4d0d8bd3080116a1785af87dc064050f6aeb960d49694b1230854a84f9a8d51756aa3d53346717081d5ec6d59326b9eecb77",
+  "service_like": false
+ },
+ {
+  "address": "1PvaqLqRAivje7CactLR55xQBYvBeaDrXN",
+  "roles": [
+   "input of 2019 consolidation (signatures from 65..160)"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "025f864e8ca1e15a541efa6a659b4a6eb1e3ab4ae8eb80cf7f0bdcadfb16525b18",
+  "service_like": false
+ },
+ {
+  "address": "1BXPwxkiiwBHT3VW83PuR8oNJR1DFadqrF",
+  "roles": [
+   "input of 2019 dust priming of the 21 pubkey addresses"
+  ],
+  "funded": 1,
+  "spent": 1,
+  "balance": 0.0,
+  "pubkey": "0278dc8c6e0b54d8f85bb2a6314621e785e6bcb6a72760af19d0729b7b740ebf80",
+  "service_like": false
+ },
+ {
+  "address": "bc1quksn4yxlxp80tn929gqnh8xpnngqj0fqr99q4z",
+  "roles": [
+   "input of 2023 prize increase (872 BTC, 85 outputs)"
+  ],
+  "funded": 11,
+  "spent": 1,
+  "balance": 0.00030104,
+  "pubkey": "02c584e2cb49a5aabd9ceb1e5128cecd0a7ca96628e76b1491950f021a4852d8ec",
+  "service_like": false
+ }
+]

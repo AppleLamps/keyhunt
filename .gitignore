@@ -65,3 +65,5 @@ build*/
 kangaroo
 lineage
 lcgfit
+novel/nonce_table.json
+novel/__pycache__/
