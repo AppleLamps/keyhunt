@@ -113,6 +113,13 @@ lineage: $(BUILD)/lineage.bin
 lcgfit: $(BUILD)/lcgfit.bin
 	@cp -f $< $@
 
+walletfit: $(BUILD)/walletfit.bin
+	@cp -f $< $@
+
+$(BUILD)/walletfit.bin: $(BUILD)/novel/walletfit.o $(BUILD)/hash/sha256.o
+	@echo "  LD    walletfit"
+	$(Q)$(CXX) $(MAIN_CXXFLAGS) -o $@ $^ $(LDLIBS)
+
 $(BUILD)/lcgfit.bin: $(BUILD)/novel/lcgfit.o
 	@echo "  LD    lcgfit"
 	$(Q)$(CXX) $(MAIN_CXXFLAGS) -o $@ $^ $(LDLIBS)
@@ -185,16 +192,17 @@ $(BUILD)/test_int: $(BUILD)/tests/test_int.o $(TEST_HASH_OBJS)
 	@echo "  LD    $@"
 	$(Q)$(CXX) $(MAIN_CXXFLAGS) -o $@ $^ $(LDLIBS)
 
-test: keyhunt kangaroo lcgfit lineage $(TEST_BINS)
+test: keyhunt kangaroo lcgfit lineage walletfit $(TEST_BINS)
 	@$(BUILD)/test_hash160
 	@$(BUILD)/test_int
 	@sh tests/run_tests.sh ./keyhunt
 	@sh tests/test_kangaroo.sh ./kangaroo
 	@./lcgfit s > /dev/null && echo "[ok]   lcgfit self test"
 	@./lineage selftest 2 > /dev/null && echo "[ok]   lineage self test"
+	@./walletfit selftest 2 > /dev/null && echo "[ok]   walletfit self test"
 	@if command -v python3 > /dev/null; then python3 novel/nonce_forensics.py | grep "creator nonces deterministic (RFC 6979): True" > /dev/null && echo "[ok]   nonce forensics (RFC 6979 confirmed)"; else echo "[skip] nonce forensics (no python3)"; fi
 
 clean:
-	rm -rf $(BUILD) keyhunt bsgsd kangaroo lineage lcgfit
+	rm -rf $(BUILD) keyhunt bsgsd kangaroo lineage lcgfit walletfit
 
 -include $(shell find $(BUILD) -name '*.d' 2>/dev/null)
