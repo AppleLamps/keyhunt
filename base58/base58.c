@@ -40,6 +40,8 @@ bool b58tobin(void *bin, size_t *binszp, const char *b58, size_t b58sz)
 {
 	size_t binsz = *binszp;
 	const unsigned char *b58u = (void*)b58;
+	if (binsz == 0)
+		return false;	// no room for the output (and a zero length VLA below is undefined)
 	unsigned char *binu = bin;
 	size_t outisz = (binsz + sizeof(b58_almostmaxint_t) - 1) / sizeof(b58_almostmaxint_t);
 	b58_almostmaxint_t outi[outisz];
