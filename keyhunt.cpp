@@ -2687,6 +2687,10 @@ void *thread_process(void *vargp)	{
 			
 				dx[i].ModSub(&Gn[i].x,&startP.x);  // For the first point
 				dx[i + 1].ModSub(&_2Gn.x,&startP.x); // For the next center point
+				/* startP == +-GRP_SIZE*stride*G (a key below GRP_SIZE*stride): the carried
+				   addition at the end of this group has a zero denominator, so the next
+				   centre is recomputed from the key instead */
+				if(dx[i + 1].IsZero())	first_group = true;
 				grp->ModInv();
 
 				pts[CPU_GRP_SIZE / 2] = startP;
