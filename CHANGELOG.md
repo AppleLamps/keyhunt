@@ -1,4 +1,5 @@
 # Unreleased
+- Endomorphism (`-e`) address/rmd160 and vanity mode (with or without `-e`) hash on the 8-way AVX2 / 16-way AVX-512 kernels instead of the 4-way SSE one. Measured on 4 cores: address `-e` 2.2x (AVX-512) and 1.6x (AVX2), vanity 1.8x, vanity `-e` 2.1x
 - Address/rmd160 mode without `-e` computes Y and hashes each key once with its real prefix instead of hashing every X with both `02` and `03`. The speed counter now shows real keys (it was doubled before); useful throughput is up 1.4x to 1.8x together with the items below
 - 16-way AVX-512 hash160 kernel (runtime detected, `KEYHUNT_SIMD=avx2|none` overrides), shared kernel source with the 8-way AVX2 one, messages are built directly in lane parallel layout (no transposes)
 - secp256k1 field arithmetic: squaring 2x faster (it was slower than a multiplication), branchless 4-limb modular add/sub/neg, points are computed in place in the search loop (no Point copies, no negations), batch inversion runs 4 interleaved chains with a single inversion. xpoint mode about 1.35x faster, BSGS about 1.08x

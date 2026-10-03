@@ -50,9 +50,27 @@ check "rmd160 -l uncompress" 1 "$N"
 run "Private Key" -m address -f "$TESTS/1to32.txt" -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -l compress
 check "address -t 1" 20 "$N"
 
-# Endomorphism uses the 4 way SSE path
-run "Private Key" -m address -f "$TESTS/1to32.txt" -r 1:FFFFF -n 0x100000 -t 4 -q -s 0 -l compress -e
-[ "$N" -ge 20 ] && echo "[ok]   address -e ($N)" || { echo "[FAIL] address -e: got $N"; fail=1; }
+# Endomorphism: the six x-only hashes per point go through the 8/16 way kernels
+# when available. Every SIMD setting must give the same hits.
+for simd in "" avx2 none; do
+	export KEYHUNT_SIMD=$simd
+	run "Private Key" -m address -f "$TESTS/1to32.txt" -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -l compress -e
+	check "address -e ${simd:-auto}" 20 "$N"
+	run "Private Key" -m address -f "$TESTS/1to32.txt" -r 1:FFFFF -n 0x100000 -t 4 -q -s 0 -l both -e
+	check "address -e -l both ${simd:-auto}" 20 "$N"
+	run "Private Key: 1$" -m rmd160 -f unc.rmd -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -l uncompress -e
+	check "rmd160 -e -l uncompress ${simd:-auto}" 1 "$N"
+	# Vanity: the counts are the ones of the 4 way SSE path
+	run "Vanity Private Key" -m vanity -v 1Good -v 1Bad -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -l compress
+	check "vanity ${simd:-auto}" 22 "$N"
+	run "Vanity Private Key" -m vanity -v 1Good -v 1Bad -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -l both
+	check "vanity -l both ${simd:-auto}" 33 "$N"
+	run "Vanity Private Key" -m vanity -v 1Good -v 1Bad -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -l compress -e
+	check "vanity -e ${simd:-auto}" 82 "$N"
+	run "Vanity Private Key" -m vanity -v 1Good -v 1Bad -r 1:FFFFF -n 0x100000 -t 4 -q -s 0 -l both -e
+	check "vanity -e -l both ${simd:-auto}" 159 "$N"
+done
+unset KEYHUNT_SIMD
 
 # BSGS: the first public key is G itself (private key 1) and plain BSGS has never
 # reported it, so 11 of the 12 keys are expected. This is the behaviour of the

@@ -158,6 +158,8 @@ int minimum_same_bytes(unsigned char* A,unsigned char* B, int length);
 
 void writekey(bool compressed,Int *key);
 void writekeyeth(Int *key);
+void hash160_block_xonly(int lanes,int nsrc,bool comp,bool uncomp,bool uncomp_neg,Point **src,char (*out)[16][20]);
+void endomorphism_fixkey(int l,Int *key);
 
 void checkpointer(void *ptr,const char *file,const char *function,const  char *name,int line);
 
@@ -2533,8 +2535,12 @@ void *thread_process(void *vargp)	{
 	bool plain_btc = (FLAGMODE == MODE_ADDRESS || FLAGMODE == MODE_RMD160) && FLAGCRYPTO == CRYPTO_BTC && !FLAGENDOMORPHISM;
 	bool calculate_y = FLAGSEARCH == SEARCH_UNCOMPRESS || FLAGSEARCH == SEARCH_BOTH || FLAGCRYPTO  == CRYPTO_ETH || plain_btc;
 	int simd_lanes = plain_btc ? hash160_simd_lanes() : 0;	/* 16 (AVX-512), 8 (AVX2) or 0 */
+	/* BTC address/rmd160 with endomorphism: the six x-only hashes per point go through the same kernels */
+	bool endo_btc = (FLAGMODE == MODE_ADDRESS || FLAGMODE == MODE_RMD160) && FLAGCRYPTO == CRYPTO_BTC && FLAGENDOMORPHISM;
+	int endo_lanes = endo_btc ? hash160_simd_lanes() : 0;
 	char hash160_simd_c[16][20];
 	char hash160_simd_u[16][20];
+	char hash160_simd_endo[12][16][20];
 	Int key_mpz,keyfound,temp_stride;
 	tt = (struct tothread *)vargp;
 	thread_number = tt->nt;
@@ -2739,6 +2745,29 @@ void *thread_process(void *vargp)	{
 						}
 						count += simd_lanes;
 						temp_stride.SetInt32(simd_lanes);
+						temp_stride.Mult(&stride);
+						key_mpz.Add(&temp_stride);
+					}
+				}
+				if(endo_lanes)	{
+					bool comp = FLAGSEARCH == SEARCH_COMPRESS || FLAGSEARCH == SEARCH_BOTH;
+					bool uncomp = FLAGSEARCH == SEARCH_UNCOMPRESS || FLAGSEARCH == SEARCH_BOTH;
+					for(; j < CPU_GRP_SIZE/4; j += endo_lanes/4)	{
+						Point *src[3] = {&pts[j*4],&endomorphism_beta[j*4],&endomorphism_beta2[j*4]};
+						hash160_block_xonly(endo_lanes,3,comp,uncomp,true,src,hash160_simd_endo);
+						for(l = (comp ? 0 : 6); l < (uncomp ? 12 : 6); l++)	{
+							for(k = 0; k < endo_lanes; k++)	{
+								if(bloom_check(&bloom,hash160_simd_endo[l][k],MAXLENGTHADDRESS) && searchbinary(addressTable,hash160_simd_endo[l][k],N))	{
+									keyfound.SetInt32(k);
+									keyfound.Mult(&stride);
+									keyfound.Add(&key_mpz);
+									endomorphism_fixkey(l,&keyfound);
+									writekey(l < 6,&keyfound);
+								}
+							}
+						}
+						count += endo_lanes;
+						temp_stride.SetInt32(endo_lanes);
 						temp_stride.Mult(&stride);
 						key_mpz.Add(&temp_stride);
 					}
@@ -3160,6 +3189,8 @@ void *thread_process_vanity(void *vargp)	{
 	//if FLAGENDOMORPHISM  == 1 and only compress search is enabled then there is no need to calculate the Y value value					
 	
 	bool calculate_y = FLAGSEARCH == SEARCH_UNCOMPRESS || FLAGSEARCH == SEARCH_BOTH;
+	int vanity_lanes = hash160_simd_lanes();	/* 16 (AVX-512), 8 (AVX2) or 0 */
+	char hash160_simd_endo[12][16][20];
 	
 	/*
 	if(FLAGDEBUG && thread_number == 0)	{
@@ -3343,7 +3374,35 @@ void *thread_process_vanity(void *vargp)	{
 					endomorphism_beta2[0].x.ModMulK1(&pn.x, &beta2);
 				}
 				
-				for(j = 0; j < CPU_GRP_SIZE/4;j++)	{
+				j = 0;
+				if(vanity_lanes)	{
+					/* Same hashes and slots as the 4 way loop below, vanity_lanes points at a time */
+					bool comp = FLAGSEARCH == SEARCH_COMPRESS || FLAGSEARCH == SEARCH_BOTH;
+					bool uncomp = FLAGSEARCH == SEARCH_UNCOMPRESS || FLAGSEARCH == SEARCH_BOTH;
+					int nsrc = FLAGENDOMORPHISM ? 3 : 1;
+					for(; j < CPU_GRP_SIZE/4; j += vanity_lanes/4)	{
+						Point *src[3] = {&pts[j*4],&endomorphism_beta[j*4],&endomorphism_beta2[j*4]};
+						hash160_block_xonly(vanity_lanes,nsrc,comp,uncomp,FLAGENDOMORPHISM,src,hash160_simd_endo);
+						for(l = 0; l < 12; l++)	{
+							if(l < 6 ? (!comp || l >= 2*nsrc) : (!uncomp || l >= 6+2*nsrc || (!FLAGENDOMORPHISM && l != 6)))
+								continue;
+							for(k = 0; k < vanity_lanes; k++)	{
+								if(vanityrmdmatch((uint8_t*)hash160_simd_endo[l][k]))	{
+									keyfound.SetInt32(k);
+									keyfound.Mult(&stride);
+									keyfound.Add(&key_mpz);
+									endomorphism_fixkey(l,&keyfound);
+									writevanitykey(l < 6,&keyfound);
+								}
+							}
+						}
+						count += vanity_lanes;
+						temp_stride.SetInt32(vanity_lanes);
+						temp_stride.Mult(&stride);
+						key_mpz.Add(&temp_stride);
+					}
+				}
+				for(; j < CPU_GRP_SIZE/4;j++)	{
 					if(FLAGSEARCH == SEARCH_COMPRESS || FLAGSEARCH == SEARCH_BOTH ){
 						if(FLAGENDOMORPHISM)	{
 							secp->GetHash160_fromX(P2PKH,0x02,&pts[(j*4)].x,&pts[(j*4)+1].x,&pts[(j*4)+2].x,&pts[(j*4)+3].x,(uint8_t*)publickeyhashrmd160_endomorphism[0][0],(uint8_t*)publickeyhashrmd160_endomorphism[0][1],(uint8_t*)publickeyhashrmd160_endomorphism[0][2],(uint8_t*)publickeyhashrmd160_endomorphism[0][3]);
@@ -5594,6 +5653,67 @@ void menu() {
 	printf("Developed by AlbertoBSD\tTips BTC: 1Coffee1jV4gB5gaXfHgSHDz9xx9QSECVW\n");
 	printf("Thanks to Iceland always helping and sharing his ideas.\nTips to Iceland: bc1q39meky2mn5qjq704zz0nnkl0v7kj4uz6r529at\n\n");
 	exit(EXIT_FAILURE);
+}
+
+/*
+	SIMD hash160 of one block of `lanes` points for the x-only paths (endomorphism
+	and vanity). src[s] are the point arrays: s = 0 the points, 1 the beta points,
+	2 the beta^2 points (nsrc is 1 or 3). The slots are the ones of the 4 way path:
+	compressed with prefix 02 and 03 in slots 2s and 2s+1, uncompressed of the point
+	in slot 6+2s and of its negation in slot 7+2s (the negation only if uncomp_neg).
+*/
+void hash160_block_xonly(int lanes,int nsrc,bool comp,bool uncomp,bool uncomp_neg,Point **src,char (*out)[16][20])	{
+	uint8_t *hp[16];
+	Point neg[16];
+	int s,l,k;
+	for(s = 0; s < nsrc; s++)	{
+		if(comp)	{
+			for(l = 0; l < 2; l++)	{
+				for(k = 0; k < lanes; k++)	hp[k] = (uint8_t*)out[2*s+l][k];
+				secp->GetHash160_fromX_N(lanes,0x02 + l,src[s],hp);
+			}
+		}
+		if(uncomp)	{
+			for(k = 0; k < lanes; k++)	hp[k] = (uint8_t*)out[6+2*s][k];
+			secp->GetHash160_N(lanes,false,src[s],hp);
+			if(uncomp_neg)	{
+				for(k = 0; k < lanes; k++)	{
+					neg[k].x.Set(&src[s][k].x);
+					neg[k].y.Set(&src[s][k].y);
+					neg[k].y.ModNeg();
+					hp[k] = (uint8_t*)out[7+2*s][k];
+				}
+				secp->GetHash160_N(lanes,false,neg,hp);
+			}
+		}
+	}
+}
+
+/*
+	key is the private key of the point a hash in slot l (layout above) came from.
+	Turns it into the private key of that hash: times lambda or lambda^2 for the
+	beta points, and negated when the hash is the one of the negated point.
+*/
+void endomorphism_fixkey(int l,Int *key)	{
+	Point publickey;
+	if(l < 6)	{
+		publickey = secp->ComputePublicKey(key);
+		bool odd = publickey.y.IsOdd();	/* lambda*P has the same y as P */
+		if(l >= 4)	key->ModMulK1order(&lambda2);
+		else if(l >= 2)	key->ModMulK1order(&lambda);
+		if((l & 1) ? !odd : odd)	{	/* slot 2s+1 is prefix 03, the key needs an odd y */
+			key->Neg();
+			key->Add(&secp->order);
+		}
+	}
+	else	{
+		if(l >= 10)	key->ModMulK1order(&lambda2);
+		else if(l >= 8)	key->ModMulK1order(&lambda);
+		if(l & 1)	{	/* slot 7+2s is the negated point */
+			key->Neg();
+			key->Add(&secp->order);
+		}
+	}
 }
 
 bool vanityrmdmatch(unsigned char *rmdhash)	{
