@@ -41,8 +41,19 @@
  *
  * Usage: kangaroo -p <pubkey hex> -r <start>:<end> [-t threads] [-k kangaroos/thread]
  *                 [-d dp bits] [-g] (Gaudry-Schost) [-e | -n] (negation map on | off) [-s seed] [-q]
+ *                 [-w work file] [-x max ops]
  * The negation map defaults to off in kangaroo mode and on in Gaudry-Schost mode
  * (measured: it only pays in the latter, see novel/README.md).
+ *
+ * Work file (-w): every distinguished point is appended to it, and the points
+ * already in it are loaded at start, so a run can be stopped (-x, or killed: the
+ * file is flushed every second) and resumed, and the files of several machines
+ * can be merged with cat. The header pins the target, the range, the mode and
+ * the walk parameters (dp bits, jump size), which a resumed run takes from the
+ * file so that its walks use the same jump table. In Gaudry-Schost mode the
+ * distinguished points are the whole state of the search and nothing is lost;
+ * in kangaroo mode the herd positions are not saved, a resumed herd starts
+ * again from its seeds and the stored points only add the old trails.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -53,6 +64,7 @@
 #include <unistd.h>
 #include <atomic>
 #include <unordered_map>
+#include <string>
 #include <vector>
 #include <chrono>
 
@@ -86,11 +98,28 @@ static Point widthP;                 // W*G, to wrap a position back into [-W/2,
 static bool quiet = false;
 static int nthreads = 4, per_thread = 512;
 static std::atomic<bool> found(false);
+static std::atomic<bool> stop(false);            // -x budget reached
+static uint64_t max_ops = 0;
 static std::atomic<uint64_t> total_steps(0);     // point additions performed by the walks
 static std::atomic<uint64_t> total_seeds(0);     // scalar multiplications (seeds and re-seeds)
 static std::atomic<uint64_t> dp_count(0);
 static std::atomic<uint64_t> fruitless(0), reseeds(0), cycles(0), solve_fail(0), stuck(0);
 static Int key_found;
+
+// Work file: a 128 byte header, then one 64 byte record per distinguished point.
+// Files can be concatenated: a header found between records is checked and skipped.
+static const char DP_MAGIC[8] = {'K','G','D','P','0','0','0','1'};
+struct DPFileHeader {
+  char magic[8];
+  uint8_t gs, negation, dp_bits, qodd;
+  uint16_t mean_bits;
+  uint8_t qx[32], start[32], end[32];
+  uint8_t pad[128 - 8 - 6 - 96];
+};
+struct DPRecord { uint64_t x1, x2; int8_t sign; uint8_t yodd; uint8_t pad[6]; uint64_t dist[5]; };
+static_assert(sizeof(DPFileHeader) == 128, "DP file header size");
+static_assert(sizeof(DPRecord) == 64, "DP record size");
+static FILE *dpfile = NULL;
 
 // Distinguished point table: x (two limbs) -> (sign, distance)
 struct DPEntry { uint64_t x2; int8_t sign; uint8_t yodd; Int dist; };
@@ -142,10 +171,17 @@ static bool solve(int8_t s1, Int &d1, int8_t s2, Int &d2) {
   return true;
 }
 
-// Returns true if a solution was found through this distinguished point
-static bool report_dp(Point &P, int8_t sign, Int &dist) {
-  uint64_t k1 = P.x.bits64[1], k2 = P.x.bits64[2];
-  uint8_t yodd = P.y.IsOdd();
+static void write_dp(uint64_t k1, uint64_t k2, int8_t sign, uint8_t yodd, Int &dist) {
+  DPRecord r; memset(&r, 0, sizeof(r));
+  r.x1 = k1; r.x2 = k2; r.sign = sign; r.yodd = yodd;
+  for (int l = 0; l < 5; l++) r.dist[l] = dist.bits64[l];
+  if (fwrite(&r, sizeof(r), 1, dpfile) != 1) { perror("work file"); exit(1); }
+}
+
+// Distinguished point (x limbs 1 and 2, y parity) reached by a kangaroo with
+// (sign, dist). Returns true if a solution was found through it, or the same point
+// was already known (the caller re-seeds the walker). New points go to the work file.
+static bool report_dp_raw(uint64_t k1, uint64_t k2, uint8_t yodd, int8_t sign, Int &dist, bool save) {
   bool hit = false;
   pthread_mutex_lock(&dpmutex);
   auto range = dptable.equal_range(k1);
@@ -162,9 +198,71 @@ static bool report_dp(Point &P, int8_t sign, Int &dist) {
     pthread_mutex_lock(&dpmutex);
     break;
   }
-  if (!hit) { DPEntry e; e.x2 = k2; e.sign = sign; e.yodd = yodd; e.dist.Set(&dist); dptable.emplace(k1, e); dp_count++; }
+  if (!hit) {
+    DPEntry e; e.x2 = k2; e.sign = sign; e.yodd = yodd; e.dist.Set(&dist); dptable.emplace(k1, e); dp_count++;
+    if (save && dpfile) write_dp(k1, k2, sign, yodd, dist);
+  }
   pthread_mutex_unlock(&dpmutex);
   return hit;      // caller re-seeds on a fruitless meeting
+}
+
+static bool report_dp(Point &P, int8_t sign, Int &dist) {
+  return report_dp_raw(P.x.bits64[1], P.x.bits64[2], P.y.IsOdd(), sign, dist, true);
+}
+
+static void fill_header(DPFileHeader &h, int mean_bits) {
+  memset(&h, 0, sizeof(h));
+  memcpy(h.magic, DP_MAGIC, 8);
+  h.gs = gs_mode; h.negation = use_negation; h.dp_bits = (uint8_t)dp_bits; h.qodd = Q.y.IsOdd();
+  h.mean_bits = (uint16_t)mean_bits;
+  Q.x.Get32Bytes(h.qx); range_start.Get32Bytes(h.start); range_end.Get32Bytes(h.end);
+}
+
+// Header of an existing work file: the search it belongs to must be this one.
+// Returns its mean_bits and sets dp_bits, or -1 when the file is empty or missing.
+static int read_work_header(const char *path) {
+  FILE *f = fopen(path, "rb");
+  if (!f) return -1;
+  DPFileHeader h;
+  size_t n = fread(&h, sizeof(h), 1, f);
+  fclose(f);
+  if (n != 1) return -1;
+  DPFileHeader want; fill_header(want, 0);
+  if (memcmp(h.magic, DP_MAGIC, 8) != 0) { fprintf(stderr, "%s is not a kangaroo work file\n", path); exit(1); }
+  if (memcmp(h.qx, want.qx, 32) || h.qodd != want.qodd || memcmp(h.start, want.start, 32) || memcmp(h.end, want.end, 32)) {
+    fprintf(stderr, "%s belongs to another public key or range\n", path); exit(1);
+  }
+  if (h.gs != want.gs || h.negation != want.negation) {
+    fprintf(stderr, "%s was made with %s, negation map %s: use the same options\n", path,
+            h.gs ? "-g" : "kangaroo mode", h.negation ? "on" : "off");
+    exit(1);
+  }
+  dp_bits = h.dp_bits;
+  return h.mean_bits;
+}
+
+// Loads every distinguished point of the work file (all headers must match the first one).
+// Returns true if two of them already solve the key.
+static bool load_work_file(const char *path, const DPFileHeader &want, uint64_t &loaded) {
+  FILE *f = fopen(path, "rb");
+  loaded = 0;
+  if (!f) return false;
+  DPRecord r;
+  bool solved = false;
+  while (fread(&r, sizeof(r), 1, f) == 1) {
+    if (memcmp(&r, DP_MAGIC, 8) == 0) {            // a header (first one, or a concatenated file)
+      DPFileHeader h; memcpy(&h, &r, sizeof(r));
+      if (fread((char *)&h + sizeof(r), sizeof(h) - sizeof(r), 1, f) != 1) break;
+      if (memcmp(&h, &want, sizeof(h)) != 0) { fprintf(stderr, "%s: a concatenated file has other parameters\n", path); exit(1); }
+      continue;
+    }
+    Int d; d.SetInt32(0);
+    for (int l = 0; l < 5; l++) d.bits64[l] = r.dist[l];
+    loaded++;
+    if (report_dp_raw(r.x1, r.x2, r.yodd, r.sign, d, false) && found) { solved = true; break; }
+  }
+  fclose(f);
+  return solved;
 }
 
 static uint64_t base_seed;
@@ -306,7 +404,7 @@ static void *worker(void *arg) {
   Int s, p, dy;
   uint64_t local = 0;
   const uint64_t stuck_limit = 64ULL << dp_bits;
-  while (!found) {
+  while (!found && !stop) {
     for (int i = 0; i < K; i++) {
       uint8_t j = (uint8_t)(w[i].P.x.bits64[1] % JUMPS);
       idx[i] = j;
@@ -353,15 +451,15 @@ static void *worker(void *arg) {
 }
 
 static void usage() {
-  fprintf(stderr, "usage: kangaroo -p <pubkey hex> -r <start>:<end> [-t threads] [-k kangaroos/thread] [-d dp bits] [-g] [-e|-n] [-s seed] [-q]\n");
+  fprintf(stderr, "usage: kangaroo -p <pubkey hex> -r <start>:<end> [-t threads] [-k kangaroos/thread] [-d dp bits] [-g] [-e|-n] [-s seed] [-q] [-w work file] [-x max ops]\n");
   exit(1);
 }
 
 int main(int argc, char **argv) {
-  const char *pub = NULL, *range = NULL;
+  const char *pub = NULL, *range = NULL, *workfile = NULL;
   uint64_t seedv = 0; bool have_seed = false;
   int c;
-  while ((c = getopt(argc, argv, "p:r:t:k:d:negs:q")) != -1) {
+  while ((c = getopt(argc, argv, "p:r:t:k:d:negs:qw:x:")) != -1) {
     switch (c) {
       case 'p': pub = optarg; break;
       case 'r': range = optarg; break;
@@ -373,6 +471,8 @@ int main(int argc, char **argv) {
       case 'g': gs_mode = true; break;
       case 's': seedv = strtoull(optarg, NULL, 10); have_seed = true; break;
       case 'q': quiet = true; break;
+      case 'w': workfile = optarg; break;
+      case 'x': max_ops = strtoull(optarg, NULL, 10); break;
       default: usage();
     }
   }
@@ -427,6 +527,7 @@ int main(int argc, char **argv) {
   // few jumps cancel exactly and the walk falls into fruitless cycles constantly.
   int klog = (int)round(log2((double)Ktotal));
   int mean_bits = wbits / 2 - 2 + klog; if (mean_bits < 8) mean_bits = 8;
+  int file_mean_bits = workfile ? read_work_header(workfile) : -1;   // also sets dp_bits
   if (dp_bits < 0) {
     dp_bits = (int)floor(wbits / 2.0 - log2((double)Ktotal) - 4);
     if (dp_bits < 0) dp_bits = 0;
@@ -436,6 +537,7 @@ int main(int argc, char **argv) {
     // a walk of about 2^dp steps should cover a small fraction (1/64) of the set
     mean_bits = wbits - dp_bits - 6; if (mean_bits < 8) mean_bits = 8;
   }
+  if (file_mean_bits >= 0) mean_bits = file_mean_bits;   // same jump table as the runs before
   Int mean; mean.SetInt32(1); mean.ShiftL(mean_bits);
   uint64_t rs = 0x9E3779B97F4A7C15ULL;          // fixed seed: the same jump table in every run
   auto random_below = [&](Int &bound) { return rand_below(bound, rs); };
@@ -458,6 +560,24 @@ int main(int argc, char **argv) {
   int e = mean_bits;
   dp_mask = (dp_bits >= 64) ? ~0ULL : ((1ULL << dp_bits) - 1);
 
+  uint64_t loaded = 0;
+  if (workfile) {
+    DPFileHeader h; fill_header(h, mean_bits);
+    if (load_work_file(workfile, h, loaded)) {
+      char *kh = key_found.GetBase16();
+      printf("[+] found privkey %s (from the %llu distinguished points of %s)\n", kh, (unsigned long long)loaded, workfile);
+      free(kh);
+      return 0;
+    }
+    bool fresh = file_mean_bits < 0;
+    dpfile = fopen(workfile, fresh ? "wb" : "ab");
+    if (!dpfile) { perror(workfile); return 1; }
+    if (fresh && fwrite(&h, sizeof(h), 1, dpfile) != 1) { perror(workfile); return 1; }
+    fflush(dpfile);
+    // new walks, not a replay of the ones that produced the stored points
+    if (loaded) base_seed ^= loaded * 0xD6E8FEB86659FD93ULL;
+  }
+
   if (!quiet) {
     char *hs = range_start.GetBase16(), *he = range_end.GetBase16();
     printf("[+] range %s:%s (%d bits)\n", hs, he, wbits); free(hs); free(he);
@@ -465,22 +585,32 @@ int main(int argc, char **argv) {
            nthreads, per_thread, JUMPS, e, dp_bits, use_negation ? "on" : "off");
     double expect = gs_mode ? (use_negation ? 1.36 : 2.08) : (use_negation ? 1.414 : 2.0);
     printf("[+] mode %s, expected ~%.3g ops (%.2f*sqrt(W))\n", gs_mode ? "Gaudry-Schost" : "kangaroo", expect * sqrtW, expect);
+    if (workfile) printf("[+] work file %s: %llu distinguished points loaded\n", workfile, (unsigned long long)loaded);
     fflush(stdout);
   }
   auto t0 = std::chrono::steady_clock::now();
   std::vector<pthread_t> th(nthreads);
   for (int i = 0; i < nthreads; i++) pthread_create(&th[i], NULL, worker, (void *)(intptr_t)i);
-  if (!quiet) {
-    while (!found) {
-      usleep(1000000);
+  // the work file is flushed and the -x budget checked every 1/10 s; stats every second
+  for (int tick = 1; !found && !stop; tick++) {
+    usleep(100000);
+    if (dpfile) { pthread_mutex_lock(&dpmutex); fflush(dpfile); pthread_mutex_unlock(&dpmutex); }
+    if (max_ops && total_steps >= max_ops) stop = true;
+    if (!quiet && tick % 10 == 0) {
       double sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
       uint64_t st = total_steps;
       printf("\r[+] %.3g ops, %.1f Mops/s, %llu dp, %.0fs   ", (double)st, st / sec / 1e6, (unsigned long long)dp_count.load(), sec);
       fflush(stdout);
     }
-    printf("\n");
   }
+  if (!quiet) printf("\n");
   for (int i = 0; i < nthreads; i++) pthread_join(th[i], NULL);
+  if (dpfile) { fclose(dpfile); dpfile = NULL; }
+  if (!found) {
+    printf("[+] stopped after %llu ops (-x), key not found yet; %llu distinguished points in %s\n",
+           (unsigned long long)total_steps.load(), (unsigned long long)dp_count.load(), workfile ? workfile : "memory (no -w: lost)");
+    return 2;
+  }
   double sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
   char *kh = key_found.GetBase16();
   uint64_t st = total_steps;
