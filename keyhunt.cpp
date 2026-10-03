@@ -2881,7 +2881,7 @@ void *thread_process(void *vargp)	{
 									if(FLAGSEARCH == SEARCH_COMPRESS || FLAGSEARCH == SEARCH_BOTH){
 										if(FLAGENDOMORPHISM)	{
 											for(l = 0;l < 6; l++)	{
-												r = bloom_check(&bloom,publickeyhashrmd160_endomorphism[l][k],MAXLENGTHADDRESS);
+												r = target_hit(publickeyhashrmd160_endomorphism[l][k]);
 												if(r) {
 													r = searchbinary(addressTable,publickeyhashrmd160_endomorphism[l][k],N);
 													if(r) {
@@ -2943,7 +2943,7 @@ void *thread_process(void *vargp)	{
 											}
 										}
 										else	{
-											r = bloom_check(&bloom,publickeyhashrmd160_endomorphism[0][k],MAXLENGTHADDRESS);
+											r = target_hit(publickeyhashrmd160_endomorphism[0][k]);
 											if(r) {
 												r = searchbinary(addressTable,publickeyhashrmd160_endomorphism[0][k],N);
 												if(r) {
@@ -2959,7 +2959,7 @@ void *thread_process(void *vargp)	{
 									if(FLAGSEARCH == SEARCH_UNCOMPRESS || FLAGSEARCH == SEARCH_BOTH)	{
 										if(FLAGENDOMORPHISM)	{
 											for(l = 6;l < 12; l++)	{	//We check the array from 6 to 12(excluded) because we save the uncompressed information there
-												r = bloom_check(&bloom,publickeyhashrmd160_endomorphism[l][k],MAXLENGTHADDRESS);	//Check in Bloom filter
+												r = target_hit(publickeyhashrmd160_endomorphism[l][k]);	//Check in Bloom filter
 												if(r) {
 													r = searchbinary(addressTable,publickeyhashrmd160_endomorphism[l][k],N);		//Check in Array using Binary search
 													if(r) {
@@ -3003,7 +3003,7 @@ void *thread_process(void *vargp)	{
 											}
 										}
 										else	{
-											r = bloom_check(&bloom,publickeyhashrmd160_uncompress[k],MAXLENGTHADDRESS);
+											r = target_hit(publickeyhashrmd160_uncompress[k]);
 											if(r) {
 												r = searchbinary(addressTable,publickeyhashrmd160_uncompress[k],N);
 												if(r) {
@@ -3021,7 +3021,7 @@ void *thread_process(void *vargp)	{
 								if(FLAGENDOMORPHISM)	{
 									for(k = 0; k < 4;k++)	{
 										for(l = 0;l < 6; l++)	{
-											r = bloom_check(&bloom,publickeyhashrmd160_endomorphism[l][k],MAXLENGTHADDRESS);
+											r = target_hit(publickeyhashrmd160_endomorphism[l][k]);
 											if(r) {
 												r = searchbinary(addressTable,publickeyhashrmd160_endomorphism[l][k],N);
 												if(r) {												
@@ -3067,7 +3067,7 @@ void *thread_process(void *vargp)	{
 								}
 								else	{
 									for(k = 0; k < 4;k++)	{
-										r = bloom_check(&bloom,publickeyhashrmd160_uncompress[k],MAXLENGTHADDRESS);
+										r = target_hit(publickeyhashrmd160_uncompress[k]);
 										if(r) {
 											r = searchbinary(addressTable,publickeyhashrmd160_uncompress[k],N);
 											if(r) {
