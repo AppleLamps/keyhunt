@@ -74,10 +74,13 @@ static void check_kernel(FieldMulKernel k, int rounds) {
 		// r = a^2
 		fieldsqr_batch_with(k, s, a, n);
 		for (int i = 0; i < n; i++) if (!same(s[i], wsq[i])) fail("sqr", name, n, i, a[i], a[i], s[i], wsq[i]);
-		// in place: a = a*b, then b = b*b
+		// in place: r aliases a (r = r*b), then r aliases b (r = a*r), then b = b*b
 		for (int i = 0; i < n; i++) r[i].Set(&a[i]);
 		fieldmul_batch_with(k, r, r, b, n);
-		for (int i = 0; i < n; i++) if (!same(r[i], want[i])) fail("mul in place", name, n, i, a[i], b[i], r[i], want[i]);
+		for (int i = 0; i < n; i++) if (!same(r[i], want[i])) fail("mul in place (r = a)", name, n, i, a[i], b[i], r[i], want[i]);
+		for (int i = 0; i < n; i++) r[i].Set(&b[i]);
+		fieldmul_batch_with(k, r, a, r, n);
+		for (int i = 0; i < n; i++) if (!same(r[i], want[i])) fail("mul in place (r = b)", name, n, i, a[i], b[i], r[i], want[i]);
 		for (int i = 0; i < n; i++) { r[i].Set(&b[i]); wsq[i].ModSquareK1(&b[i]); }
 		fieldsqr_batch_with(k, r, r, n);
 		for (int i = 0; i < n; i++) if (!same(r[i], wsq[i])) fail("sqr in place", name, n, i, b[i], b[i], r[i], wsq[i]);

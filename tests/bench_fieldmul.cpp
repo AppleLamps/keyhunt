@@ -21,6 +21,10 @@ static double now_ns() {
 int main(int argc, char **argv) {
 	int n = argc > 1 ? atoi(argv[1]) : 1024;
 	int repeat = argc > 2 ? atoi(argv[2]) : 20000;
+	if (n < 1 || n > (1 << 24) || repeat < 1) {
+		fprintf(stderr, "usage: bench_fieldmul [batch 1..16777216] [repeat >= 1]\n");
+		return 1;
+	}
 	Secp256K1 secp;
 	secp.Init();
 	std::mt19937_64 rng(1);
