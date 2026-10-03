@@ -24,6 +24,7 @@ email: albertobsd@gmail.com
 #include "secp256k1/Int.h"
 #include "secp256k1/IntGroup.h"
 #include "secp256k1/Random.h"
+#include "secp256k1/FieldMulSimd.h"
 
 #include "hash/sha256.h"
 #include "hash/ripemd160.h"
@@ -153,6 +154,7 @@ struct bsgs_bhash	{
 	uint8_t bucket;
 };
 void bsgs_group_x(Point &startP,Int *dx,IntGroup *grp,Point *pts);
+void group_points_batch(Point &startP,Point *G,Int *dx,Point *pts,bool calculate_y,Point *endo_beta,Point *endo_beta2);
 void bsgs_hash_group(Point *pts,struct bsgs_bhash *bh);
 int bsgs_bloom_check(struct bsgs_bhash *bh,int i);
 int bsgs_thirdcheck(Int *start_range,uint32_t a,uint32_t k_index,Int *privatekey);
@@ -2564,7 +2566,7 @@ void *thread_process(void *vargp)	{
 	Int dyn;
 	Int _s;
 	Int _p;
-	int i,l,pp_offset,pn_offset,hLength = (CPU_GRP_SIZE / 2 - 1);
+	int i,l,hLength = (CPU_GRP_SIZE / 2 - 1);
 	uint64_t j,count;
 	Point R,temporal,publickey;
 	int r,thread_number,continue_flag = 1,k;
@@ -2655,65 +2657,9 @@ void *thread_process(void *vargp)	{
 
 				pts[CPU_GRP_SIZE / 2] = startP;
 
-				for(i = 0; i<hLength; i++) {
-					pp_offset = CPU_GRP_SIZE / 2 + (i + 1);
-					pn_offset = CPU_GRP_SIZE / 2 - (i + 1);
-					/* The points are computed in place in pts[] (no Point copies) */
-					Point &pp = pts[pp_offset];
-					Point &pn = pts[pn_offset];
-
-					// P = startP + i*G
-					dy.ModSub(&Gn[i].y,&startP.y);
-
-					_s.ModMulK1(&dy,&dx[i]);        // s = (p2.y-p1.y)*inverse(p2.x-p1.x);
-					_p.ModSquareK1(&_s);            // _p = pow2(s)
-
-					pp.x.ModSub(&_p,&startP.x);
-					pp.x.ModSub(&Gn[i].x);           // rx = pow2(s) - p1.x - p2.x;
-
-					if(calculate_y)	{
-						pp.y.ModSub(&Gn[i].x,&pp.x);
-						pp.y.ModMulK1(&_s);
-						pp.y.ModSub(&Gn[i].y);           // ry = - p2.y - s*(ret.x-p2.x);
-					}
-
-					// P = startP - i*G  , if (x,y) = i*G then (x,-y) = -i*G
-					// The slope is -(Gy + Py)/dx: its square is the same as for (Gy + Py)/dx,
-					// so the negation is skipped and the sign is folded into the y formula.
-					dyn.ModAdd(&Gn[i].y,&startP.y);
-
-					_s.ModMulK1(&dyn,&dx[i]);      // -s = (p2.y+p1.y)*inverse(p2.x-p1.x);
-					_p.ModSquareK1(&_s);            // _p = pow2(s)
-					pn.x.ModSub(&_p,&startP.x);
-					pn.x.ModSub(&Gn[i].x);          // rx = pow2(s) - p1.x - p2.x;
-
-					if(calculate_y)	{
-						pn.y.ModSub(&pn.x,&Gn[i].x);
-						pn.y.ModMulK1(&_s);
-						pn.y.ModAdd(&Gn[i].y);          // ry = s*(p2.x-ret.x) + p2.y  with s the real slope
-					}
-					
-					if(FLAGENDOMORPHISM)	{
-						/*
-							Q = (x,y)
-							For any point Q
-							Q*lambda = (x*beta mod p ,y)
-							Q*lambda is a Scalar Multiplication
-							x*beta is just a Multiplication (Very fast)
-						*/
-						
-						if( calculate_y  )	{
-							endomorphism_beta[pp_offset].y.Set(&pp.y);
-							endomorphism_beta[pn_offset].y.Set(&pn.y);
-							endomorphism_beta2[pp_offset].y.Set(&pp.y);
-							endomorphism_beta2[pn_offset].y.Set(&pn.y);
-						}
-						endomorphism_beta[pp_offset].x.ModMulK1(&pp.x, &beta);
-						endomorphism_beta[pn_offset].x.ModMulK1(&pn.x, &beta);
-						endomorphism_beta2[pp_offset].x.ModMulK1(&pp.x, &beta2);
-						endomorphism_beta2[pn_offset].x.ModMulK1(&pn.x, &beta2);
-					}
-				}
+				/* startP +- (i+1)*G for the whole group, field multiplies batched through the SIMD kernels */
+				group_points_batch(startP,Gn.data(),dx,pts,calculate_y,FLAGENDOMORPHISM ? endomorphism_beta : NULL,FLAGENDOMORPHISM ? endomorphism_beta2 : NULL);
+				i = hLength;
 				/*
 					Half point for endomorphism because pts[CPU_GRP_SIZE / 2] was not calcualte in the previous cycle
 				*/
@@ -3216,7 +3162,7 @@ void *thread_process_vanity(void *vargp)	{
 	Int _p;
 	Point pp;	//point positive
 	Point pn;	//point negative
-	int l,pp_offset,pn_offset,i,hLength = (CPU_GRP_SIZE / 2 - 1);
+	int l,i,hLength = (CPU_GRP_SIZE / 2 - 1);
 	uint64_t j,count;
 	Point R,temporal,publickey;
 	int thread_number,continue_flag = 1,k;
@@ -3313,69 +3259,9 @@ void *thread_process_vanity(void *vargp)	{
 
 				pts[CPU_GRP_SIZE / 2] = startP;
 
-				for(i = 0; i<hLength; i++) {
-					pp = startP;
-					pn = startP;
-
-					// P = startP + i*G
-					dy.ModSub(&Gn[i].y,&pp.y);
-
-					_s.ModMulK1(&dy,&dx[i]);        // s = (p2.y-p1.y)*inverse(p2.x-p1.x);
-					_p.ModSquareK1(&_s);            // _p = pow2(s)
-
-					pp.x.ModNeg();
-					pp.x.ModAdd(&_p);
-					pp.x.ModSub(&Gn[i].x);           // rx = pow2(s) - p1.x - p2.x;
-					
-					if(calculate_y)	{
-						pp.y.ModSub(&Gn[i].x,&pp.x);
-						pp.y.ModMulK1(&_s);
-						pp.y.ModSub(&Gn[i].y);           // ry = - p2.y - s*(ret.x-p2.x);
-					}
-
-					// P = startP - i*G  , if (x,y) = i*G then (x,-y) = -i*G
-					dyn.Set(&Gn[i].y);
-					dyn.ModNeg();
-					dyn.ModSub(&pn.y);
-
-					_s.ModMulK1(&dyn,&dx[i]);      // s = (p2.y-p1.y)*inverse(p2.x-p1.x);
-					_p.ModSquareK1(&_s);            // _p = pow2(s)
-					pn.x.ModNeg();
-					pn.x.ModAdd(&_p);
-					pn.x.ModSub(&Gn[i].x);          // rx = pow2(s) - p1.x - p2.x;
-
-					if( calculate_y  )	{
-						pn.y.ModSub(&Gn[i].x,&pn.x);
-						pn.y.ModMulK1(&_s);
-						pn.y.ModAdd(&Gn[i].y);          // ry = - p2.y - s*(ret.x-p2.x);
-					}
-					pp_offset = CPU_GRP_SIZE / 2 + (i + 1);
-					pn_offset = CPU_GRP_SIZE / 2 - (i + 1);
-
-					pts[pp_offset] = pp;
-					pts[pn_offset] = pn;
-					
-					if(FLAGENDOMORPHISM)	{
-						/*
-							Q = (x,y)
-							For any point Q
-							Q*lambda = (x*beta mod p ,y)
-							Q*lambda is a Scalar Multiplication
-							x*beta is just a Multiplication (Very fast)
-						*/
-						
-						if( calculate_y  )	{
-							endomorphism_beta[pp_offset].y.Set(&pp.y);
-							endomorphism_beta[pn_offset].y.Set(&pn.y);
-							endomorphism_beta2[pp_offset].y.Set(&pp.y);
-							endomorphism_beta2[pn_offset].y.Set(&pn.y);
-						}
-						endomorphism_beta[pp_offset].x.ModMulK1(&pp.x, &beta);
-						endomorphism_beta[pn_offset].x.ModMulK1(&pn.x, &beta);
-						endomorphism_beta2[pp_offset].x.ModMulK1(&pp.x, &beta2);
-						endomorphism_beta2[pn_offset].x.ModMulK1(&pn.x, &beta2);
-					}
-				}
+				/* startP +- (i+1)*G for the whole group, field multiplies batched through the SIMD kernels */
+				group_points_batch(startP,Gn.data(),dx,pts,calculate_y,FLAGENDOMORPHISM ? endomorphism_beta : NULL,FLAGENDOMORPHISM ? endomorphism_beta2 : NULL);
+				i = hLength;
 				/*
 					Half point for endomorphism because pts[CPU_GRP_SIZE / 2] was not calcualte in the previous cycle
 				*/
@@ -3388,7 +3274,7 @@ void *thread_process_vanity(void *vargp)	{
 					endomorphism_beta[CPU_GRP_SIZE / 2].x.ModMulK1(&pts[CPU_GRP_SIZE / 2].x, &beta);
 					endomorphism_beta2[CPU_GRP_SIZE / 2].x.ModMulK1(&pts[CPU_GRP_SIZE / 2].x, &beta2);
 				}
-				
+
 				// First point (startP - (GRP_SZIE/2)*G)
 				pn = startP;
 				dyn.Set(&Gn[i].y);
@@ -4011,6 +3897,86 @@ void *thread_process_bsgs_random(void *vargp)	{
 	place, and the slope of startP - i*GS is folded in: -(GSy + Py)/dx squares to the same
 	value as (GSy + Py)/dx.
 */
+/*
+	pts[CPU_GRP_SIZE/2 + 1 + i] = startP + G[i] and pts[CPU_GRP_SIZE/2 - 1 - i] = startP - G[i]
+	for i in [0, CPU_GRP_SIZE/2 - 1), with dx[i] = 1/(G[i].x - startP.x) already
+	inverted. The additions are independent, so the field multiplications of a
+	chunk of points go through the lane parallel kernels (fieldmul_batch,
+	AVX-512 IFMA / AVX-512 / scalar), which are bit exact with ModMulK1: the
+	points are the same as with the scalar loop. x only when calculate_y is
+	false. With endo_beta/endo_beta2 the endomorphism points (x*beta, y),
+	(x*beta2, y) are filled in too. The slopes for startP - G[i] are computed
+	with the sign folded in (-s = (G.y + P.y)/dx, same square).
+*/
+#define FM_CHUNK 64
+void group_points_batch(Point &startP,Point *G,Int *dx,Point *pts,bool calculate_y,Point *endo_beta,Point *endo_beta2)	{
+	Int dy[FM_CHUNK],dyn[FM_CHUNK],sp[FM_CHUNK],sn[FM_CHUNK],tp[FM_CHUNK],tn[FM_CHUNK];
+	struct BetaVec { Int b[FM_CHUNK],b2[FM_CHUNK]; BetaVec() { for(int k = 0; k < FM_CHUNK; k++) { b[k].Set(&beta); b2[k].Set(&beta2); } } };
+	static BetaVec bv;	/* initialised on first use, after main() set beta/beta2 */
+	int hLength = CPU_GRP_SIZE / 2 - 1;
+	for(int i0 = 0; i0 < hLength; i0 += FM_CHUNK)	{
+		int cnt = hLength - i0 < FM_CHUNK ? hLength - i0 : FM_CHUNK;
+		int k,i;
+		for(k = 0; k < cnt; k++)	{
+			dy[k].ModSub(&G[i0 + k].y,&startP.y);		// s = (G.y - P.y)/dx
+			dyn[k].ModAdd(&G[i0 + k].y,&startP.y);	// -s' = (G.y + P.y)/dx
+		}
+		fieldmul_batch(sp,dy,&dx[i0],cnt);
+		fieldmul_batch(sn,dyn,&dx[i0],cnt);
+		fieldsqr_batch(tp,sp,cnt);
+		fieldsqr_batch(tn,sn,cnt);
+		for(k = 0; k < cnt; k++)	{
+			i = i0 + k;
+			Int &ppx = pts[CPU_GRP_SIZE / 2 + (i + 1)].x;
+			Int &pnx = pts[CPU_GRP_SIZE / 2 - (i + 1)].x;
+			ppx.ModSub(&tp[k],&startP.x);
+			ppx.ModSub(&G[i].x);				// rx = s^2 - p1.x - p2.x
+			pnx.ModSub(&tn[k],&startP.x);
+			pnx.ModSub(&G[i].x);
+			if(calculate_y)	{
+				tp[k].ModSub(&G[i].x,&ppx);		// ry = s*(p2.x - rx) - p2.y
+				tn[k].ModSub(&pnx,&G[i].x);		// ry = s'*(p2.x - rx) + p2.y = -s'*(rx - p2.x) + p2.y
+			}
+		}
+		if(calculate_y)	{
+			fieldmul_batch(tp,tp,sp,cnt);
+			fieldmul_batch(tn,tn,sn,cnt);
+			for(k = 0; k < cnt; k++)	{
+				i = i0 + k;
+				pts[CPU_GRP_SIZE / 2 + (i + 1)].y.ModSub(&tp[k],&G[i].y);
+				pts[CPU_GRP_SIZE / 2 - (i + 1)].y.ModAdd(&tn[k],&G[i].y);
+			}
+		}
+		if(endo_beta)	{
+			/* Q*lambda = (x*beta, y), Q*lambda^2 = (x*beta2, y) */
+			for(k = 0; k < cnt; k++)	{
+				i = i0 + k;
+				dy[k].Set(&pts[CPU_GRP_SIZE / 2 + (i + 1)].x);
+				dyn[k].Set(&pts[CPU_GRP_SIZE / 2 - (i + 1)].x);
+			}
+			fieldmul_batch(sp,dy,bv.b,cnt);
+			fieldmul_batch(sn,dyn,bv.b,cnt);
+			fieldmul_batch(tp,dy,bv.b2,cnt);
+			fieldmul_batch(tn,dyn,bv.b2,cnt);
+			for(k = 0; k < cnt; k++)	{
+				i = i0 + k;
+				int pp_offset = CPU_GRP_SIZE / 2 + (i + 1);
+				int pn_offset = CPU_GRP_SIZE / 2 - (i + 1);
+				endo_beta[pp_offset].x.Set(&sp[k]);
+				endo_beta[pn_offset].x.Set(&sn[k]);
+				endo_beta2[pp_offset].x.Set(&tp[k]);
+				endo_beta2[pn_offset].x.Set(&tn[k]);
+				if(calculate_y)	{
+					endo_beta[pp_offset].y.Set(&pts[pp_offset].y);
+					endo_beta[pn_offset].y.Set(&pts[pn_offset].y);
+					endo_beta2[pp_offset].y.Set(&pts[pp_offset].y);
+					endo_beta2[pn_offset].y.Set(&pts[pn_offset].y);
+				}
+			}
+		}
+	}
+}
+
 void bsgs_group_x(Point &startP,Int *dx,IntGroup *grp,Point *pts)	{
 	Int dy,_s,_p;
 	int i,hLength = CPU_GRP_SIZE / 2 - 1;
@@ -4022,22 +3988,7 @@ void bsgs_group_x(Point &startP,Int *dx,IntGroup *grp,Point *pts)	{
 	grp->ModInv();
 
 	pts[CPU_GRP_SIZE / 2].x.Set(&startP.x);
-	for(i = 0; i < hLength; i++)	{
-		Int &ppx = pts[CPU_GRP_SIZE / 2 + (i + 1)].x;
-		Int &pnx = pts[CPU_GRP_SIZE / 2 - (i + 1)].x;
-
-		dy.ModSub(&GSn[i].y,&startP.y);		// P + i*GS
-		_s.ModMulK1(&dy,&dx[i]);
-		_p.ModSquareK1(&_s);
-		ppx.ModSub(&_p,&startP.x);
-		ppx.ModSub(&GSn[i].x);			// rx = s^2 - p1.x - p2.x
-
-		dy.ModAdd(&GSn[i].y,&startP.y);		// P - i*GS
-		_s.ModMulK1(&dy,&dx[i]);
-		_p.ModSquareK1(&_s);
-		pnx.ModSub(&_p,&startP.x);
-		pnx.ModSub(&GSn[i].x);
-	}
+	group_points_batch(startP,GSn.data(),dx,pts,false,NULL,NULL);
 	// First point (startP - (CPU_GRP_SIZE/2)*GS)
 	dy.ModAdd(&GSn[i].y,&startP.y);
 	_s.ModMulK1(&dy,&dx[i]);
