@@ -139,6 +139,7 @@ void menu();
 void init_generator();
 
 int searchbinary(struct address_value *buffer,char *data,int64_t array_length);
+static inline int target_hit(const char *hash);
 void sleep_ms(int milliseconds);
 
 void _sort(struct address_value *arr,int64_t N);
@@ -268,6 +269,15 @@ char **vanity_address_targets = NULL;
 struct bloom *vanity_bloom = NULL;
 
 struct bloom bloom;
+
+/* Direct match for small target lists (a single puzzle address is the common
+   case): the first 8 bytes of each hash160 are compared with the targets
+   instead of hashing the 20 bytes twice with XXH64 for the bloom filter. A
+   prefix hit is confirmed with the full binary search, so the answer is the
+   same as bloom_check + searchbinary. */
+#define SMALL_TARGETS_MAX 8
+static uint64_t small_targets[SMALL_TARGETS_MAX];
+static int small_targets_n = 0;
 
 uint64_t *steps = NULL;
 unsigned int *ends = NULL;
@@ -980,6 +990,11 @@ int main(int argc, char **argv)	{
 		}
 		if(FLAGMODE != MODE_VANITY)	{
 			init_found_targets();
+			if((FLAGMODE == MODE_ADDRESS || FLAGMODE == MODE_RMD160) && N <= SMALL_TARGETS_MAX)	{
+				for(uint64_t t = 0; t < N; t++)	memcpy(&small_targets[t],addressTable[t].value,8);
+				small_targets_n = (int)N;
+				printf("[+] %" PRIu64 " target(s): direct 8 byte match instead of the bloom filter\n",N);
+			}
 		}
 	}
 	
@@ -2350,6 +2365,18 @@ char *pubkeytopubaddress(char *pkey,int length)	{
 	return pubaddress;	// pubaddress need to be free by te caller funtion
 }
 
+static inline int target_hit(const char *hash)	{
+	if(small_targets_n)	{
+		uint64_t v;
+		memcpy(&v,hash,8);
+		for(int k = 0; k < small_targets_n; k++)	{
+			if(v == small_targets[k])	return searchbinary(addressTable,(char*)hash,N);
+		}
+		return 0;
+	}
+	return bloom_check(&bloom,hash,MAXLENGTHADDRESS) && searchbinary(addressTable,(char*)hash,N);
+}
+
 int searchbinary(struct address_value *buffer,char *data,int64_t array_length) {
 	int64_t half,min,max,current;
 	int r = 0,rcmp;
@@ -2640,12 +2667,19 @@ void *thread_process(void *vargp)	{
 					THREADOUTPUT = 1;
 				}
 			}
+			/* The centre of the first group of a block is a scalar multiplication; the
+			   following centres are startP + GRP_SIZE*stride*G, one point addition done
+			   at the end of each group (its inverse rides in the batch inversion). */
+			bool first_group = true;
 			do {
-				temp_stride.SetInt32(CPU_GRP_SIZE / 2);
-				temp_stride.Mult(&stride);
-				key_mpz.Add(&temp_stride);
-	 			startP = secp->ComputePublicKey(&key_mpz);
-				key_mpz.Sub(&temp_stride);
+				if(first_group)	{
+					temp_stride.SetInt32(CPU_GRP_SIZE / 2);
+					temp_stride.Mult(&stride);
+					key_mpz.Add(&temp_stride);
+		 			startP = secp->ComputePublicKey(&key_mpz);
+					key_mpz.Sub(&temp_stride);
+					first_group = false;
+				}
 
 				for(i = 0; i < hLength; i++) {
 					dx[i].ModSub(&Gn[i].x,&startP.x);
@@ -2716,7 +2750,7 @@ void *thread_process(void *vargp)	{
 							for(k = 0; k < simd_lanes; k++)	hp[k] = (uint8_t*)hash160_simd_c[k];
 							secp->GetHash160_N(simd_lanes,true,grpN,hp);
 							for(k = 0; k < simd_lanes; k++)	{
-								if(bloom_check(&bloom,hash160_simd_c[k],MAXLENGTHADDRESS) && searchbinary(addressTable,hash160_simd_c[k],N))	{
+								if(target_hit(hash160_simd_c[k]))	{
 									keyfound.SetInt32(k);
 									keyfound.Mult(&stride);
 									keyfound.Add(&key_mpz);
@@ -2728,7 +2762,7 @@ void *thread_process(void *vargp)	{
 							for(k = 0; k < simd_lanes; k++)	hp[k] = (uint8_t*)hash160_simd_u[k];
 							secp->GetHash160_N(simd_lanes,false,grpN,hp);
 							for(k = 0; k < simd_lanes; k++)	{
-								if(bloom_check(&bloom,hash160_simd_u[k],MAXLENGTHADDRESS) && searchbinary(addressTable,hash160_simd_u[k],N))	{
+								if(target_hit(hash160_simd_u[k]))	{
 									keyfound.SetInt32(k);
 									keyfound.Mult(&stride);
 									keyfound.Add(&key_mpz);
@@ -2750,7 +2784,7 @@ void *thread_process(void *vargp)	{
 						hash160_block_xonly(endo_lanes,3,comp,uncomp,true,src,hash160_simd_endo);
 						for(l = (comp ? 0 : 6); l < (uncomp ? 12 : 6); l++)	{
 							for(k = 0; k < endo_lanes; k++)	{
-								if(bloom_check(&bloom,hash160_simd_endo[l][k],MAXLENGTHADDRESS) && searchbinary(addressTable,hash160_simd_endo[l][k],N))	{
+								if(target_hit(hash160_simd_endo[l][k]))	{
 									keyfound.SetInt32(k);
 									keyfound.Mult(&stride);
 									keyfound.Add(&key_mpz);
