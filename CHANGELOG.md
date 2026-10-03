@@ -1,5 +1,6 @@
 # Unreleased
 - Address, rmd160, xpoint, minikeys and ETH modes end once every distinct target in the input file has been found. Before, random mode (`-R`, the default) kept searching after the last hit until killed
+- BSGS exits with status 0 when every point is found (it was 1). The "range is small" error now shows the range size and N and names `-n`
 - BSGS: the giant step points are computed in place and X only, in one function shared by the five `-B` modes, and the bloom lookups of a group are hashed first and prefetched ahead (same hashes, saved files stay valid). Measured on 4 cores: 1.69x at `-k 4` and at `-k 32` (460 MB filter)
 - BSGS: `bsgs_secondcheck` and `bsgs_thirdcheck` do their 32 point additions with one inversion
 - BSGS: `-F`, compact first bloom filter (false positive rate 1/1000): half the RAM, 1.76x faster at equal RAM (twice the `-k`)

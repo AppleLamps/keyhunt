@@ -1136,7 +1136,11 @@ int main(int argc, char **argv)	{
 
 
 		if(n_range_diff.IsLower(&BSGS_N) )	{
-			fprintf(stderr,"[E] the given range is small\n");
+			hextemp = n_range_diff.GetBase16();
+			char *hexN = BSGS_N.GetBase16();
+			fprintf(stderr,"[E] the given range is small: its size 0x%s is lower than N = 0x%s, use a smaller -n\n",hextemp,hexN);
+			free(hexN);
+			free(hextemp);
 			exit(EXIT_FAILURE);
 		}
 		
@@ -3831,7 +3835,7 @@ void *thread_process_bsgs(void *vargp)	{
 								}
 								if(salir)	{
 									printf("All points were found\n");
-									exit(EXIT_FAILURE);
+									exit(EXIT_SUCCESS);
 								}
 							} //End if second check
 						}//End if first check
@@ -3977,7 +3981,7 @@ void *thread_process_bsgs_random(void *vargp)	{
 								}
 								if(salir)	{
 									printf("All points were found\n");
-									exit(EXIT_FAILURE);
+									exit(EXIT_SUCCESS);
 								}
 							} //End if second check
 						}//End if first check
@@ -4784,7 +4788,7 @@ void *thread_process_bsgs_dance(void *vargp)	{
 								}
 								if(salir)	{
 									printf("All points were found\n");
-									exit(EXIT_FAILURE);
+									exit(EXIT_SUCCESS);
 								}
 							} //End if second check
 						}//End if first check
@@ -4936,7 +4940,7 @@ void *thread_process_bsgs_backward(void *vargp)	{
 								}
 								if(salir)	{
 									printf("All points were found\n");
-									exit(EXIT_FAILURE);
+									exit(EXIT_SUCCESS);
 								}
 							} //End if second check
 						}//End if first check
@@ -5115,7 +5119,7 @@ void *thread_process_bsgs_both(void *vargp)	{
 									}
 									if(salir)	{
 										printf("All points were found\n");
-										exit(EXIT_FAILURE);
+										exit(EXIT_SUCCESS);
 									}
 								} //End if second check
 							}//End if first check
