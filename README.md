@@ -75,6 +75,7 @@ Keyhunt is developed on Linux. On Windows use [WSL](https://learn.microsoft.com/
 
 - a C and C++ compiler with C++17 support (GCC or Clang) and `make`
 - an x86-64 CPU with SSSE3 for the main build; with AVX2 or AVX-512, address and rmd160 mode (without `-e`, Bitcoin) use an 8-way or 16-way hash path, chosen at run time, so the same binary still runs on older CPUs. `KEYHUNT_SIMD=avx2` (or `none`) in the environment forces a narrower path, for CPUs where AVX-512 lowers the clock too much
+- with AVX-512 IFMA (Ice Lake, Zen 4 and later), AVX-512 or AVX2, the secp256k1 field multiplications of the point additions run 8 or 4 at a time in a lane parallel kernel, also chosen at run time. `KEYHUNT_FIELD_SIMD=ifma|avx512|avx2|none` forces one (the AVX2 one is about break even with the scalar code)
 - `libssl-dev` and `libgmp-dev` only for the `legacy` build
 
 On Debian or Ubuntu:

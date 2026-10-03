@@ -443,7 +443,13 @@ static void *worker(void *arg) {
         if (k.sign == 0 && mag.IsGreater(&half_width)) local += gs_restart(k);
       }
     }
-    if (local >= 65536) { total_steps += local; local = 0; }
+    if (local >= 65536) {
+      // The main thread polls the -x budget every 1/10 s, which on a fast
+      // machine is millions of ops late: enforce it here, at the flush, so
+      // the overshoot is bounded by 65536 ops per thread.
+      total_steps += local; local = 0;
+      if (max_ops && total_steps >= max_ops) stop = true;
+    }
   }
   total_steps += local;
   (void)id;

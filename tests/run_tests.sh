@@ -85,6 +85,21 @@ for simd in "" avx2 none; do
 done
 unset KEYHUNT_SIMD
 
+# Field multiply kernels (secp256k1/FieldMulSimd.cpp): the point additions of a
+# group go through the batched AVX-512 IFMA / AVX-512 / AVX2 multiply when the
+# CPU has it. Every kernel must give the same keys as the scalar one (an
+# unsupported setting falls back to scalar, so the runs are safe everywhere).
+for fm in ifma avx512 avx2 none; do
+	export KEYHUNT_FIELD_SIMD=$fm
+	run "Private Key" -m address -f "$TESTS/1to32.txt" -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -l both
+	check "address -l both field $fm" 20 "$N"
+	run "Private Key" -m address -f "$TESTS/1to32.txt" -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -l compress -e
+	check "address -e field $fm" 20 "$N"
+	run "Vanity Private Key" -m vanity -v 1Good -v 1Bad -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -l both
+	check "vanity -l both field $fm" 33 "$N"
+done
+unset KEYHUNT_FIELD_SIMD
+
 # BSGS: the first public key is G itself (private key 1) and plain BSGS has never
 # reported it, so 11 of the 12 keys are expected. This is the behaviour of the
 # original code, kept here as a regression guard.
@@ -106,5 +121,9 @@ check "bsgs range smaller than N is refused" 1 "$N"
 # Compact first bloom filter: 1000 times more false positives, the same keys
 run "found privkey" -m bsgs -f pub12.txt -r 1:FFFFFFFF -n 0x1000000 -t 4 -q -s 0 -B sequential -F
 check "bsgs -F" 11 "$N"
+export KEYHUNT_FIELD_SIMD=none
+run "found privkey" -m bsgs -f pub12.txt -r 1:FFFFFFFF -n 0x1000000 -t 4 -q -s 0 -B sequential
+check "bsgs, scalar field multiply" 11 "$N"
+unset KEYHUNT_FIELD_SIMD
 
 exit $fail
