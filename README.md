@@ -339,6 +339,8 @@ Each `n` has a maximum `k` that works well. Going over it can cost speed, hide h
 
 The tables must fit in RAM. Swap does not work: the access pattern is made of small random reads and it is far too slow.
 
+`-F` makes the first bloom filter, which is most of that RAM, about half the size (false positive rate 1/1000 instead of 1/1000000). Double the `-k` of the table above with it: `-k 256 -F` uses the RAM of `-k 128`. Measured on 4 cores, `-k 8 -F` ran 1.76x faster than `-k 4` with the same filter size. At the same `-k`, `-F` is about 7% slower. The filter saved by `-S` with `-F` has its own file name (`keyhunt_bsgs_4c_*.blm`).
+
 Example for the 63 bit puzzle (the original author measured about four minutes on 8 threads with `-k 512`, which needs around 8 GB of RAM):
 
 ```

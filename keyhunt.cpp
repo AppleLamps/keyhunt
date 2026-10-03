@@ -146,6 +146,15 @@ void bsgs_sort(struct bsgs_xvalue *arr,int64_t n);
 
 int bsgs_searchbinary(struct bsgs_xvalue *arr,char *data,int64_t array_length,uint64_t *r_value);
 int bsgs_secondcheck(Int *start_range,uint32_t a,uint32_t k_index,Int *privatekey);
+void bsgs_amp_x(Point &Q,std::vector<Point> &amp,Int *xs);
+/* bloom_bP lookup of one giant step X, split so the memory accesses of a group overlap */
+struct bsgs_bhash	{
+	uint64_t a,b;
+	uint8_t bucket;
+};
+void bsgs_group_x(Point &startP,Int *dx,IntGroup *grp,Point *pts);
+void bsgs_hash_group(Point *pts,struct bsgs_bhash *bh);
+int bsgs_bloom_check(struct bsgs_bhash *bh,int i);
 int bsgs_thirdcheck(Int *start_range,uint32_t a,uint32_t k_index,Int *privatekey);
 
 void sha256sse_22(uint8_t *src0, uint8_t *src1, uint8_t *src2, uint8_t *src3, uint8_t *dst0, uint8_t *dst1, uint8_t *dst2, uint8_t *dst3);
@@ -267,6 +276,11 @@ uint64_t u64range;
 Int OUTPUTSECONDS;
 
 int FLAGSKIPCHECKSUM = 0;
+/* -F: first BSGS bloom filter with a false positive rate of 1/1000 instead of
+   1/1000000, about half the RAM. The extra hits are cheap since bsgs_secondcheck
+   does its 32 additions with one inversion, so at equal RAM (twice the -k) BSGS
+   is about 1.8x faster. Saved with its own file name (keyhunt_bsgs_4c_). */
+int FLAGBSGSCOMPACT = 0;
 int FLAGENDOMORPHISM = 0;
 
 int FLAGBLOOMMULTIPLIER = 1;
@@ -478,7 +492,7 @@ int main(int argc, char **argv)	{
 	
 	printf("[+] Version %s, developed by AlbertoBSD\n",version);
 
-	while ((c = getopt(argc, argv, "deh6MqRSB:b:c:C:E:f:I:k:l:m:N:n:p:r:s:t:v:G:8:z:")) != -1) {
+	while ((c = getopt(argc, argv, "dehF6MqRSB:b:c:C:E:f:I:k:l:m:N:n:p:r:s:t:v:G:8:z:")) != -1) {
 		switch(c) {
 			case 'h':
 				menu();
@@ -583,6 +597,10 @@ int main(int argc, char **argv)	{
 			case 'I':
 				FLAGSTRIDE = 1;
 				str_stride = optarg;
+			break;
+			case 'F':
+				FLAGBSGSCOMPACT = 1;
+				printf("[+] Compact BSGS bloom filter (false positive rate 1/1000)\n");
 			break;
 			case 'k':
 				KFACTOR = (int)strtol(optarg,NULL,10);
@@ -1227,7 +1245,7 @@ int main(int argc, char **argv)	{
 #else
 			pthread_mutex_init(&bloom_bP_mutex[i],NULL);
 #endif
-			if(bloom_init2(&bloom_bP[i],itemsbloom,0.000001)	== 1){
+			if(bloom_init2(&bloom_bP[i],itemsbloom,FLAGBSGSCOMPACT ? 0.001 : 0.000001)	== 1){
 				fprintf(stderr,"[E] error bloom_init _ [%" PRIu64 "]\n",i);
 				exit(EXIT_FAILURE);
 			}
@@ -1365,7 +1383,7 @@ int main(int argc, char **argv)	{
 		if(FLAGSAVEREADFILE)	{
 			/*Reading file for 1st bloom filter */
 
-			snprintf(buffer_bloom_file,1024,"keyhunt_bsgs_4_%" PRIu64 ".blm",bsgs_m);
+			snprintf(buffer_bloom_file,1024,FLAGBSGSCOMPACT ? "keyhunt_bsgs_4c_%" PRIu64 ".blm" : "keyhunt_bsgs_4_%" PRIu64 ".blm",bsgs_m);
 			fd_aux1 = fopen(buffer_bloom_file,"rb");
 			if(fd_aux1 != NULL)	{
 				printf("[+] Reading bloom filter from file %s ",buffer_bloom_file);
@@ -1411,7 +1429,7 @@ int main(int argc, char **argv)	{
 				}
 				FLAGREADEDFILE1 = 1;
 			}
-			else	{	/*Checking for old file    keyhunt_bsgs_3_   */
+			else if(!FLAGBSGSCOMPACT)	{	/*Checking for old file    keyhunt_bsgs_3_ (made with the default rate)  */
 				snprintf(buffer_bloom_file,1024,"keyhunt_bsgs_3_%" PRIu64 ".blm",bsgs_m);
 				fd_aux1 = fopen(buffer_bloom_file,"rb");
 				if(fd_aux1 != NULL)	{
@@ -1872,7 +1890,7 @@ int main(int argc, char **argv)	{
 		}
 		if(FLAGSAVEREADFILE || FLAGUPDATEFILE1 )	{
 			if(!FLAGREADEDFILE1 || FLAGUPDATEFILE1)	{
-				snprintf(buffer_bloom_file,1024,"keyhunt_bsgs_4_%" PRIu64 ".blm",bsgs_m);
+				snprintf(buffer_bloom_file,1024,FLAGBSGSCOMPACT ? "keyhunt_bsgs_4c_%" PRIu64 ".blm" : "keyhunt_bsgs_4_%" PRIu64 ".blm",bsgs_m);
 				
 				if(FLAGUPDATEFILE1)	{
 					printf("[W] Updating old file into a new one\n");
@@ -3665,25 +3683,24 @@ void *thread_process_bsgs(void *vargp)	{
 	struct tothread* tt;
 
 	// Character variables
-	char xpoint_raw[32], *aux_c, *hextemp;
+	char *aux_c, *hextemp;
 
 	// Integer variables
 	Int base_key, keyfound;
 	IntGroup* grp = new IntGroup(CPU_GRP_SIZE / 2 + 1);
 	Int dx[CPU_GRP_SIZE / 2 + 1];
-	Int dy, dyn, _s, _p, km, intaux;
+	Int km, intaux;
 
 	// Point variables
 	Point base_point, point_aux, point_found;
 	Point startP;
-	Point pp, pn;
 	Point pts[CPU_GRP_SIZE];
+	struct bsgs_bhash bh[CPU_GRP_SIZE];
 
 	// Unsigned integer variables
 	uint32_t k, l, r, salir, thread_number, cycles;
 
 	// Other variables
-	int hLength = (CPU_GRP_SIZE / 2 - 1);
 	grp->Set(dx);
 
 	tt = (struct tothread *)vargp;
@@ -3752,81 +3769,10 @@ void *thread_process_bsgs(void *vargp)	{
 				startP  = secp->AddDirect(OriginalPointsBSGS[k],point_aux);
 				uint32_t j = 0;
 				while( j < cycles && bsgs_found[k]== 0 )	{
-					int i;
-					for(i = 0; i < hLength; i++) {
-						dx[i].ModSub(&GSn[i].x,&startP.x);
-					}
-					dx[i].ModSub(&GSn[i].x,&startP.x);  // For the first point
-					dx[i+1].ModSub(&_2GSn.x,&startP.x); // For the next center point
-					// Grouped ModInv
-					grp->ModInv();
-					/*
-					We use the fact that P + i*G and P - i*G has the same deltax, so the same inverse
-					We compute key in the positive and negative way from the center of the group
-					*/
-					// center point
-					pts[CPU_GRP_SIZE / 2] = startP;
-					for(i = 0; i<hLength; i++) {
-						pp = startP;
-						pn = startP;
-
-						// P = startP + i*G
-						dy.ModSub(&GSn[i].y,&pp.y);
-
-						_s.ModMulK1(&dy,&dx[i]);        // s = (p2.y-p1.y)*inverse(p2.x-p1.x);
-						_p.ModSquareK1(&_s);            // _p = pow2(s)
-
-						pp.x.ModNeg();
-						pp.x.ModAdd(&_p);
-						pp.x.ModSub(&GSn[i].x);           // rx = pow2(s) - p1.x - p2.x;
-#if 0
-  pp.y.ModSub(&GSn[i].x,&pp.x);
-  pp.y.ModMulK1(&_s);
-  pp.y.ModSub(&GSn[i].y);           // ry = - p2.y - s*(ret.x-p2.x);  
-#endif
-						// P = startP - i*G  , if (x,y) = i*G then (x,-y) = -i*G
-						dyn.Set(&GSn[i].y);
-						dyn.ModNeg();
-						dyn.ModSub(&pn.y);
-
-						_s.ModMulK1(&dyn,&dx[i]);       // s = (p2.y-p1.y)*inverse(p2.x-p1.x);
-						_p.ModSquareK1(&_s);            // _p = pow2(s)
-
-						pn.x.ModNeg();
-						pn.x.ModAdd(&_p);
-						pn.x.ModSub(&GSn[i].x);          // rx = pow2(s) - p1.x - p2.x;
-
-#if 0
-  pn.y.ModSub(&GSn[i].x,&pn.x);
-  pn.y.ModMulK1(&_s);
-  pn.y.ModAdd(&GSn[i].y);          // ry = - p2.y - s*(ret.x-p2.x);  
-#endif
-
-						pts[CPU_GRP_SIZE / 2 + (i + 1)] = pp;
-						pts[CPU_GRP_SIZE / 2 - (i + 1)] = pn;
-					}
-					// First point (startP - (GRP_SZIE/2)*G)
-					pn = startP;
-					dyn.Set(&GSn[i].y);
-					dyn.ModNeg();
-					dyn.ModSub(&pn.y);
-
-					_s.ModMulK1(&dyn,&dx[i]);
-					_p.ModSquareK1(&_s);
-
-					pn.x.ModNeg();
-					pn.x.ModAdd(&_p);
-					pn.x.ModSub(&GSn[i].x);
-
-#if 0
-pn.y.ModSub(&GSn[i].x,&pn.x);
-pn.y.ModMulK1(&_s);
-pn.y.ModAdd(&GSn[i].y);
-#endif
-					pts[0] = pn;
+					bsgs_group_x(startP,dx,grp,pts);	/* also advances startP to the next group */
+					bsgs_hash_group(pts,bh);
 					for(int i = 0; i<CPU_GRP_SIZE && bsgs_found[k]== 0; i++) {
-						pts[i].x.Get32Bytes((unsigned char*)xpoint_raw);
-						r = bloom_check(&bloom_bP[((unsigned char)xpoint_raw[0])],xpoint_raw,32);
+						r = bsgs_bloom_check(bh,i);
 						if(r) {
 							r = bsgs_secondcheck(&base_key,((j*1024) + i),k,&keyfound);
 							if(r)	{
@@ -3865,22 +3811,6 @@ pn.y.ModAdd(&GSn[i].y);
 							} //End if second check
 						}//End if first check
 					}// For for pts variable
-					// Next start point (startP += (bsSize*GRP_SIZE).G)
-					pp = startP;
-					dy.ModSub(&_2GSn.y,&pp.y);
-
-					_s.ModMulK1(&dy,&dx[i + 1]);
-					_p.ModSquareK1(&_s);
-
-					pp.x.ModNeg();
-					pp.x.ModAdd(&_p);
-					pp.x.ModSub(&_2GSn.x);
-
-					pp.y.ModSub(&_2GSn.x,&pp.x);
-					pp.y.ModMulK1(&_s);
-					pp.y.ModSub(&_2GSn.y);
-					startP = pp;
-					
 					j++;
 				} // end while
 			}// End if 
@@ -3899,7 +3829,7 @@ void *thread_process_bsgs_random(void *vargp)	{
 
 	FILE *filekey;
 	struct tothread *tt;
-	char xpoint_raw[32],*aux_c,*hextemp;
+	char *aux_c,*hextemp;
 	Int base_key,keyfound,n_range_random;
 	Point base_point,point_aux,point_found;
 	uint32_t l,k,r,salir,thread_number,cycles;
@@ -3907,18 +3837,12 @@ void *thread_process_bsgs_random(void *vargp)	{
 	IntGroup *grp = new IntGroup(CPU_GRP_SIZE / 2 + 1);
 	Point startP;
 	
-	int hLength = (CPU_GRP_SIZE / 2 - 1);
 	
 	Int dx[CPU_GRP_SIZE / 2 + 1];
 	Point pts[CPU_GRP_SIZE];
+	struct bsgs_bhash bh[CPU_GRP_SIZE];
 
-	Int dy;
-	Int dyn;
-	Int _s;
-	Int _p;
 	Int km,intaux;
-	Point pp;
-	Point pn;
 	grp->Set(dx);
 
 
@@ -3989,93 +3913,11 @@ void *thread_process_bsgs_random(void *vargp)	{
 				uint32_t j = 0;
 				while( j < cycles && bsgs_found[k]== 0 )	{
 				
-					int i;
-					for(i = 0; i < hLength; i++) {
-						dx[i].ModSub(&GSn[i].x,&startP.x);
-					}
-					dx[i].ModSub(&GSn[i].x,&startP.x);  // For the first point
-					dx[i+1].ModSub(&_2GSn.x,&startP.x); // For the next center point
-
-					// Grouped ModInv
-					grp->ModInv();
-					
-					/*
-					We use the fact that P + i*G and P - i*G has the same deltax, so the same inverse
-					We compute key in the positive and negative way from the center of the group
-					*/
-
-					// center point
-					pts[CPU_GRP_SIZE / 2] = startP;
-					
-					for(i = 0; i<hLength; i++) {
-
-						pp = startP;
-						pn = startP;
-
-						// P = startP + i*G
-						dy.ModSub(&GSn[i].y,&pp.y);
-
-						_s.ModMulK1(&dy,&dx[i]);        // s = (p2.y-p1.y)*inverse(p2.x-p1.x);
-						_p.ModSquareK1(&_s);            // _p = pow2(s)
-
-						pp.x.ModNeg();
-						pp.x.ModAdd(&_p);
-						pp.x.ModSub(&GSn[i].x);           // rx = pow2(s) - p1.x - p2.x;
-						
-#if 0
-  pp.y.ModSub(&GSn[i].x,&pp.x);
-  pp.y.ModMulK1(&_s);
-  pp.y.ModSub(&GSn[i].y);           // ry = - p2.y - s*(ret.x-p2.x);  
-#endif
-
-						// P = startP - i*G  , if (x,y) = i*G then (x,-y) = -i*G
-						dyn.Set(&GSn[i].y);
-						dyn.ModNeg();
-						dyn.ModSub(&pn.y);
-
-						_s.ModMulK1(&dyn,&dx[i]);       // s = (p2.y-p1.y)*inverse(p2.x-p1.x);
-						_p.ModSquareK1(&_s);            // _p = pow2(s)
-
-						pn.x.ModNeg();
-						pn.x.ModAdd(&_p);
-						pn.x.ModSub(&GSn[i].x);          // rx = pow2(s) - p1.x - p2.x;
-
-#if 0
-  pn.y.ModSub(&GSn[i].x,&pn.x);
-  pn.y.ModMulK1(&_s);
-  pn.y.ModAdd(&GSn[i].y);          // ry = - p2.y - s*(ret.x-p2.x);  
-#endif
-
-
-						pts[CPU_GRP_SIZE / 2 + (i + 1)] = pp;
-						pts[CPU_GRP_SIZE / 2 - (i + 1)] = pn;
-
-					}
-
-					// First point (startP - (GRP_SZIE/2)*G)
-					pn = startP;
-					dyn.Set(&GSn[i].y);
-					dyn.ModNeg();
-					dyn.ModSub(&pn.y);
-
-					_s.ModMulK1(&dyn,&dx[i]);
-					_p.ModSquareK1(&_s);
-
-					pn.x.ModNeg();
-					pn.x.ModAdd(&_p);
-					pn.x.ModSub(&GSn[i].x);
-
-#if 0
-pn.y.ModSub(&GSn[i].x,&pn.x);
-pn.y.ModMulK1(&_s);
-pn.y.ModAdd(&GSn[i].y);
-#endif
-
-					pts[0] = pn;
+					bsgs_group_x(startP,dx,grp,pts);	/* also advances startP to the next group */
+					bsgs_hash_group(pts,bh);
 					
 					for(int i = 0; i<CPU_GRP_SIZE && bsgs_found[k]== 0; i++) {
-						pts[i].x.Get32Bytes((unsigned char*)xpoint_raw);
-						r = bloom_check(&bloom_bP[((unsigned char)xpoint_raw[0])],xpoint_raw,32);
+						r = bsgs_bloom_check(bh,i);
 						if(r) {
 							r = bsgs_secondcheck(&base_key,((j*1024) + i),k,&keyfound);
 							if(r)	{
@@ -4116,24 +3958,6 @@ pn.y.ModAdd(&GSn[i].y);
 						}//End if first check
 						
 					}// For for pts variable
-					
-					// Next start point (startP += (bsSize*GRP_SIZE).G)
-					
-					pp = startP;
-					dy.ModSub(&_2GSn.y,&pp.y);
-
-					_s.ModMulK1(&dy,&dx[i + 1]);
-					_p.ModSquareK1(&_s);
-
-					pp.x.ModNeg();
-					pp.x.ModAdd(&_p);
-					pp.x.ModSub(&_2GSn.x);
-
-					pp.y.ModSub(&_2GSn.x,&pp.x);
-					pp.y.ModMulK1(&_s);
-					pp.y.ModSub(&_2GSn.y);
-					startP = pp;
-					
 					j++;
 					
 				}	//End While
@@ -4151,11 +3975,116 @@ pn.y.ModAdd(&GSn[i].y);
 	The bsgs_secondcheck function is made to perform a second BSGS search in a Range of less size.
 	This funtion is made with the especific purpouse to USE a smaller bPtable in RAM.
 */
+/*
+	One group of giant steps: the X of startP + i*GS for i = -CPU_GRP_SIZE/2 .. CPU_GRP_SIZE/2-1
+	into pts[0..CPU_GRP_SIZE-1].x with a single inversion, then startP += CPU_GRP_SIZE*GS.
+	Only X is needed for the bloom lookup, so Y is not computed. The points are written in
+	place, and the slope of startP - i*GS is folded in: -(GSy + Py)/dx squares to the same
+	value as (GSy + Py)/dx.
+*/
+void bsgs_group_x(Point &startP,Int *dx,IntGroup *grp,Point *pts)	{
+	Int dy,_s,_p;
+	int i,hLength = CPU_GRP_SIZE / 2 - 1;
+	for(i = 0; i < hLength; i++)	{
+		dx[i].ModSub(&GSn[i].x,&startP.x);
+	}
+	dx[i].ModSub(&GSn[i].x,&startP.x);	// For the first point
+	dx[i+1].ModSub(&_2GSn.x,&startP.x);	// For the next center point
+	grp->ModInv();
+
+	pts[CPU_GRP_SIZE / 2].x.Set(&startP.x);
+	for(i = 0; i < hLength; i++)	{
+		Int &ppx = pts[CPU_GRP_SIZE / 2 + (i + 1)].x;
+		Int &pnx = pts[CPU_GRP_SIZE / 2 - (i + 1)].x;
+
+		dy.ModSub(&GSn[i].y,&startP.y);		// P + i*GS
+		_s.ModMulK1(&dy,&dx[i]);
+		_p.ModSquareK1(&_s);
+		ppx.ModSub(&_p,&startP.x);
+		ppx.ModSub(&GSn[i].x);			// rx = s^2 - p1.x - p2.x
+
+		dy.ModAdd(&GSn[i].y,&startP.y);		// P - i*GS
+		_s.ModMulK1(&dy,&dx[i]);
+		_p.ModSquareK1(&_s);
+		pnx.ModSub(&_p,&startP.x);
+		pnx.ModSub(&GSn[i].x);
+	}
+	// First point (startP - (CPU_GRP_SIZE/2)*GS)
+	dy.ModAdd(&GSn[i].y,&startP.y);
+	_s.ModMulK1(&dy,&dx[i]);
+	_p.ModSquareK1(&_s);
+	pts[0].x.ModSub(&_p,&startP.x);
+	pts[0].x.ModSub(&GSn[i].x);
+
+	// Next start point (startP + CPU_GRP_SIZE*GS), Y included
+	dy.ModSub(&_2GSn.y,&startP.y);
+	_s.ModMulK1(&dy,&dx[i + 1]);
+	_p.ModSquareK1(&_s);
+	_p.ModSub(&startP.x);
+	startP.x.ModSub(&_p,&_2GSn.x);
+	startP.y.ModSub(&_2GSn.x,&startP.x);
+	startP.y.ModMulK1(&_s);
+	startP.y.ModSub(&_2GSn.y);
+}
+
+void bsgs_hash_group(Point *pts,struct bsgs_bhash *bh)	{
+	unsigned char xpoint_raw[32];
+	for(int i = 0; i < CPU_GRP_SIZE; i++)	{
+		pts[i].x.Get32Bytes(xpoint_raw);
+		bh[i].bucket = xpoint_raw[0];
+		bloom_hash(xpoint_raw,32,&bh[i].a,&bh[i].b);
+	}
+}
+
+/* bloom_check of the X behind bh[i], with the lookup of bh[i + BSGS_PREFETCH] started ahead */
+#define BSGS_PREFETCH 8
+int bsgs_bloom_check(struct bsgs_bhash *bh,int i)	{
+	if(i == 0)	{
+		for(int d = 0; d < BSGS_PREFETCH; d++)	bloom_prefetch(&bloom_bP[bh[d].bucket],bh[d].a,bh[d].b);
+	}
+	if(i + BSGS_PREFETCH < CPU_GRP_SIZE)	{
+		struct bsgs_bhash *n = &bh[i + BSGS_PREFETCH];
+		bloom_prefetch(&bloom_bP[n->bucket],n->a,n->b);
+	}
+	return bloom_check_hashed(&bloom_bP[bh[i].bucket],bh[i].a,bh[i].b);
+}
+
+/*
+	X of Q + amp[i] for the 32 points of amp, with a single inversion: the 32
+	additions are independent (all start from Q). Same result as
+	secp->AddDirect(Q,amp[i]).x, which is still used for a lane with Q.x == amp[i].x
+	(the inversion of 0 would spoil the whole batch).
+*/
+void bsgs_amp_x(Point &Q,std::vector<Point> &amp,Int *xs)	{
+	Int dx[32],dy,_s,_p;
+	bool same_x[32];
+	IntGroup grp(32);
+	grp.Set(dx);
+	for(int i = 0; i < 32; i++)	{
+		dx[i].ModSub(&amp[i].x,&Q.x);
+		same_x[i] = dx[i].IsZero();
+		if(same_x[i])	dx[i].SetInt32(1);
+	}
+	grp.ModInv();
+	for(int i = 0; i < 32; i++)	{
+		if(same_x[i])	{
+			Point r = secp->AddDirect(Q,amp[i]);
+			xs[i].Set(&r.x);
+			continue;
+		}
+		dy.ModSub(&amp[i].y,&Q.y);
+		_s.ModMulK1(&dy,&dx[i]);	// s = (p2.y-p1.y)*inverse(p2.x-p1.x)
+		_p.ModSquareK1(&_s);
+		xs[i].ModSub(&_p,&Q.x);
+		xs[i].ModSub(&amp[i].x);	// rx = s^2 - p1.x - p2.x
+	}
+}
+
 int bsgs_secondcheck(Int *start_range,uint32_t a,uint32_t k_index,Int *privatekey)	{
 	int i = 0,found = 0,r = 0;
-	Int base_key;
+	Int base_key,xs[32];
 	Point base_point,point_aux;
-	Point BSGS_Q, BSGS_S,BSGS_Q_AMP;
+	Point BSGS_Q, BSGS_S;
 	char xpoint_raw[32];
 
 
@@ -4173,10 +4102,9 @@ int bsgs_secondcheck(Int *start_range,uint32_t a,uint32_t k_index,Int *privateke
 	*/
 	BSGS_S = secp->AddDirect(OriginalPointsBSGS[k_index],point_aux);
 	BSGS_Q.Set(BSGS_S);
+	bsgs_amp_x(BSGS_Q,BSGS_AMP2,xs);
 	do {
-		BSGS_Q_AMP = secp->AddDirect(BSGS_Q,BSGS_AMP2[i]);
-		BSGS_S.Set(BSGS_Q_AMP);
-		BSGS_S.x.Get32Bytes((unsigned char *) xpoint_raw);
+		xs[i].Get32Bytes((unsigned char *) xpoint_raw);
 		r = bloom_check(&bloom_bPx2nd[(uint8_t) xpoint_raw[0]],xpoint_raw,32);
 		if(r)	{
 			found = bsgs_thirdcheck(&base_key,i,k_index,privatekey);
@@ -4189,9 +4117,9 @@ int bsgs_secondcheck(Int *start_range,uint32_t a,uint32_t k_index,Int *privateke
 int bsgs_thirdcheck(Int *start_range,uint32_t a,uint32_t k_index,Int *privatekey)	{
 	uint64_t j = 0;
 	int i = 0,found = 0,r = 0;
-	Int base_key,calculatedkey;
+	Int base_key,calculatedkey,xs[32];
 	Point base_point,point_aux;
-	Point BSGS_Q, BSGS_S,BSGS_Q_AMP;
+	Point BSGS_Q, BSGS_S;
 	char xpoint_raw[32];
 
 	base_key.SetInt32(a);
@@ -4203,11 +4131,10 @@ int bsgs_thirdcheck(Int *start_range,uint32_t a,uint32_t k_index,Int *privatekey
 	
 	BSGS_S = secp->AddDirect(OriginalPointsBSGS[k_index],point_aux);
 	BSGS_Q.Set(BSGS_S);
+	bsgs_amp_x(BSGS_Q,BSGS_AMP3,xs);
 	
 	do {
-		BSGS_Q_AMP = secp->AddDirect(BSGS_Q,BSGS_AMP3[i]);
-		BSGS_S.Set(BSGS_Q_AMP);
-		BSGS_S.x.Get32Bytes((unsigned char *)xpoint_raw);
+		xs[i].Get32Bytes((unsigned char *)xpoint_raw);
 		r = bloom_check(&bloom_bPx3rd[(uint8_t)xpoint_raw[0]],xpoint_raw,32);
 		if(r)	{
 			r = bsgs_searchbinary(bPtable,xpoint_raw,bsgs_m3,&j);
@@ -4678,15 +4605,15 @@ void *thread_process_bsgs_dance(void *vargp)	{
 #endif
 
 	Point pts[CPU_GRP_SIZE];
+	struct bsgs_bhash bh[CPU_GRP_SIZE];
 	Int dx[CPU_GRP_SIZE / 2 + 1];
-	Point pp,pn,startP,base_point,point_aux,point_found;
+	Point startP,base_point,point_aux,point_found;
 	FILE *filekey;
 	struct tothread *tt;
-	char xpoint_raw[32],*aux_c,*hextemp;
-	Int base_key,keyfound,dy,dyn,_s,_p,km,intaux;
+	char *aux_c,*hextemp;
+	Int base_key,keyfound,km,intaux;
 	IntGroup *grp = new IntGroup(CPU_GRP_SIZE / 2 + 1);
 	uint32_t k,l,r,salir,thread_number,entrar,cycles;
-	int hLength = (CPU_GRP_SIZE / 2 - 1);	
 
 	grp->Set(dx);
 	
@@ -4793,94 +4720,11 @@ void *thread_process_bsgs_dance(void *vargp)	{
 				uint32_t j = 0;
 				while( j < cycles && bsgs_found[k]== 0 )	{
 				
-					int i;
-					
-					for(i = 0; i < hLength; i++) {
-						dx[i].ModSub(&GSn[i].x,&startP.x);
-					}
-					dx[i].ModSub(&GSn[i].x,&startP.x);  // For the first point
-					dx[i+1].ModSub(&_2GSn.x,&startP.x); // For the next center point
-
-					// Grouped ModInv
-					grp->ModInv();
-					
-					/*
-					We use the fact that P + i*G and P - i*G has the same deltax, so the same inverse
-					We compute key in the positive and negative way from the center of the group
-					*/
-
-					// center point
-					pts[CPU_GRP_SIZE / 2] = startP;
-					
-					for(i = 0; i<hLength; i++) {
-
-						pp = startP;
-						pn = startP;
-
-						// P = startP + i*G
-						dy.ModSub(&GSn[i].y,&pp.y);
-
-						_s.ModMulK1(&dy,&dx[i]);        // s = (p2.y-p1.y)*inverse(p2.x-p1.x);
-						_p.ModSquareK1(&_s);            // _p = pow2(s)
-
-						pp.x.ModNeg();
-						pp.x.ModAdd(&_p);
-						pp.x.ModSub(&GSn[i].x);           // rx = pow2(s) - p1.x - p2.x;
-						
-#if 0
-  pp.y.ModSub(&GSn[i].x,&pp.x);
-  pp.y.ModMulK1(&_s);
-  pp.y.ModSub(&GSn[i].y);           // ry = - p2.y - s*(ret.x-p2.x);  
-#endif
-
-						// P = startP - i*G  , if (x,y) = i*G then (x,-y) = -i*G
-						dyn.Set(&GSn[i].y);
-						dyn.ModNeg();
-						dyn.ModSub(&pn.y);
-
-						_s.ModMulK1(&dyn,&dx[i]);       // s = (p2.y-p1.y)*inverse(p2.x-p1.x);
-						_p.ModSquareK1(&_s);            // _p = pow2(s)
-
-						pn.x.ModNeg();
-						pn.x.ModAdd(&_p);
-						pn.x.ModSub(&GSn[i].x);          // rx = pow2(s) - p1.x - p2.x;
-
-#if 0
-  pn.y.ModSub(&GSn[i].x,&pn.x);
-  pn.y.ModMulK1(&_s);
-  pn.y.ModAdd(&GSn[i].y);          // ry = - p2.y - s*(ret.x-p2.x);  
-#endif
-
-
-						pts[CPU_GRP_SIZE / 2 + (i + 1)] = pp;
-						pts[CPU_GRP_SIZE / 2 - (i + 1)] = pn;
-
-					}
-
-					// First point (startP - (GRP_SZIE/2)*G)
-					pn = startP;
-					dyn.Set(&GSn[i].y);
-					dyn.ModNeg();
-					dyn.ModSub(&pn.y);
-
-					_s.ModMulK1(&dyn,&dx[i]);
-					_p.ModSquareK1(&_s);
-
-					pn.x.ModNeg();
-					pn.x.ModAdd(&_p);
-					pn.x.ModSub(&GSn[i].x);
-
-#if 0
-pn.y.ModSub(&GSn[i].x,&pn.x);
-pn.y.ModMulK1(&_s);
-pn.y.ModAdd(&GSn[i].y);
-#endif
-
-					pts[0] = pn;
+					bsgs_group_x(startP,dx,grp,pts);	/* also advances startP to the next group */
+					bsgs_hash_group(pts,bh);
 					
 					for(int i = 0; i<CPU_GRP_SIZE && bsgs_found[k]== 0; i++) {
-						pts[i].x.Get32Bytes((unsigned char*)xpoint_raw);
-						r = bloom_check(&bloom_bP[((unsigned char)xpoint_raw[0])],xpoint_raw,32);
+						r = bsgs_bloom_check(bh,i);
 						if(r) {
 							r = bsgs_secondcheck(&base_key,((j*1024) + i),k,&keyfound);
 							if(r)	{
@@ -4921,24 +4765,6 @@ pn.y.ModAdd(&GSn[i].y);
 						}//End if first check
 						
 					}// For for pts variable
-					
-					// Next start point (startP += (bsSize*GRP_SIZE).G)
-					
-					pp = startP;
-					dy.ModSub(&_2GSn.y,&pp.y);
-
-					_s.ModMulK1(&dy,&dx[i + 1]);
-					_p.ModSquareK1(&_s);
-
-					pp.x.ModNeg();
-					pp.x.ModAdd(&_p);
-					pp.x.ModSub(&_2GSn.x);
-
-					pp.y.ModSub(&_2GSn.x,&pp.x);
-					pp.y.ModMulK1(&_s);
-					pp.y.ModSub(&_2GSn.y);
-					startP = pp;
-					
 					j++;
 				}//while all the aMP points
 			}// End if 
@@ -4956,7 +4782,7 @@ void *thread_process_bsgs_backward(void *vargp)	{
 #endif
 	FILE *filekey;
 	struct tothread *tt;
-	char xpoint_raw[32],*aux_c,*hextemp;
+	char *aux_c,*hextemp;
 	Int base_key,keyfound;
 	Point base_point,point_aux,point_found;
 	uint32_t k,l,r,salir,thread_number,entrar,cycles;
@@ -4964,18 +4790,12 @@ void *thread_process_bsgs_backward(void *vargp)	{
 	IntGroup *grp = new IntGroup(CPU_GRP_SIZE / 2 + 1);
 	Point startP;
 	
-	int hLength = (CPU_GRP_SIZE / 2 - 1);
 	
 	Int dx[CPU_GRP_SIZE / 2 + 1];
 	Point pts[CPU_GRP_SIZE];
+	struct bsgs_bhash bh[CPU_GRP_SIZE];
 
-	Int dy;
-	Int dyn;
-	Int _s;
-	Int _p;
 	Int km,intaux;
-	Point pp;
-	Point pn;
 	grp->Set(dx);
 
 	tt = (struct tothread *)vargp;
@@ -5052,93 +4872,11 @@ void *thread_process_bsgs_backward(void *vargp)	{
 				startP  = secp->AddDirect(OriginalPointsBSGS[k],point_aux);
 				uint32_t j = 0;
 				while( j < cycles && bsgs_found[k]== 0 )	{
-					int i;
-					for(i = 0; i < hLength; i++) {
-						dx[i].ModSub(&GSn[i].x,&startP.x);
-					}
-					dx[i].ModSub(&GSn[i].x,&startP.x);  // For the first point
-					dx[i+1].ModSub(&_2GSn.x,&startP.x); // For the next center point
-
-					// Grouped ModInv
-					grp->ModInv();
-					
-					/*
-					We use the fact that P + i*G and P - i*G has the same deltax, so the same inverse
-					We compute key in the positive and negative way from the center of the group
-					*/
-
-					// center point
-					pts[CPU_GRP_SIZE / 2] = startP;
-					
-					for(i = 0; i<hLength; i++) {
-
-						pp = startP;
-						pn = startP;
-
-						// P = startP + i*G
-						dy.ModSub(&GSn[i].y,&pp.y);
-
-						_s.ModMulK1(&dy,&dx[i]);        // s = (p2.y-p1.y)*inverse(p2.x-p1.x);
-						_p.ModSquareK1(&_s);            // _p = pow2(s)
-
-						pp.x.ModNeg();
-						pp.x.ModAdd(&_p);
-						pp.x.ModSub(&GSn[i].x);           // rx = pow2(s) - p1.x - p2.x;
-						
-#if 0
-  pp.y.ModSub(&GSn[i].x,&pp.x);
-  pp.y.ModMulK1(&_s);
-  pp.y.ModSub(&GSn[i].y);           // ry = - p2.y - s*(ret.x-p2.x);  
-#endif
-
-						// P = startP - i*G  , if (x,y) = i*G then (x,-y) = -i*G
-						dyn.Set(&GSn[i].y);
-						dyn.ModNeg();
-						dyn.ModSub(&pn.y);
-
-						_s.ModMulK1(&dyn,&dx[i]);       // s = (p2.y-p1.y)*inverse(p2.x-p1.x);
-						_p.ModSquareK1(&_s);            // _p = pow2(s)
-
-						pn.x.ModNeg();
-						pn.x.ModAdd(&_p);
-						pn.x.ModSub(&GSn[i].x);          // rx = pow2(s) - p1.x - p2.x;
-
-#if 0
-  pn.y.ModSub(&GSn[i].x,&pn.x);
-  pn.y.ModMulK1(&_s);
-  pn.y.ModAdd(&GSn[i].y);          // ry = - p2.y - s*(ret.x-p2.x);  
-#endif
-
-
-						pts[CPU_GRP_SIZE / 2 + (i + 1)] = pp;
-						pts[CPU_GRP_SIZE / 2 - (i + 1)] = pn;
-
-					}
-
-					// First point (startP - (GRP_SZIE/2)*G)
-					pn = startP;
-					dyn.Set(&GSn[i].y);
-					dyn.ModNeg();
-					dyn.ModSub(&pn.y);
-
-					_s.ModMulK1(&dyn,&dx[i]);
-					_p.ModSquareK1(&_s);
-
-					pn.x.ModNeg();
-					pn.x.ModAdd(&_p);
-					pn.x.ModSub(&GSn[i].x);
-
-#if 0
-pn.y.ModSub(&GSn[i].x,&pn.x);
-pn.y.ModMulK1(&_s);
-pn.y.ModAdd(&GSn[i].y);
-#endif
-
-					pts[0] = pn;
+					bsgs_group_x(startP,dx,grp,pts);	/* also advances startP to the next group */
+					bsgs_hash_group(pts,bh);
 					
 					for(int i = 0; i<CPU_GRP_SIZE && bsgs_found[k]== 0; i++) {
-						pts[i].x.Get32Bytes((unsigned char*)xpoint_raw);
-						r = bloom_check(&bloom_bP[((unsigned char)xpoint_raw[0])],xpoint_raw,32);
+						r = bsgs_bloom_check(bh,i);
 						if(r) {
 							r = bsgs_secondcheck(&base_key,((j*1024) + i),k,&keyfound);
 							if(r)	{
@@ -5179,24 +4917,7 @@ pn.y.ModAdd(&GSn[i].y);
 						}//End if first check
 						
 					}// For for pts variable
-					
-					// Next start point (startP += (bsSize*GRP_SIZE).G)
-					
-					pp = startP;
-					dy.ModSub(&_2GSn.y,&pp.y);
-
-					_s.ModMulK1(&dy,&dx[i + 1]);
-					_p.ModSquareK1(&_s);
-
-					pp.x.ModNeg();
-					pp.x.ModAdd(&_p);
-					pp.x.ModSub(&_2GSn.x);
-
-					pp.y.ModSub(&_2GSn.x,&pp.x);
-					pp.y.ModMulK1(&_s);
-					pp.y.ModSub(&_2GSn.y);
-					startP = pp;
-					j++;
+										j++;
 				}//while all the aMP points
 			}// End if 
 		}
@@ -5213,7 +4934,7 @@ void *thread_process_bsgs_both(void *vargp)	{
 #endif
 	FILE *filekey;
 	struct tothread *tt;
-	char xpoint_raw[32],*aux_c,*hextemp;
+	char *aux_c,*hextemp;
 	Int base_key,keyfound;
 	Point base_point,point_aux,point_found;
 	uint32_t k,l,r,salir,thread_number,entrar,cycles;
@@ -5221,18 +4942,12 @@ void *thread_process_bsgs_both(void *vargp)	{
 	IntGroup *grp = new IntGroup(CPU_GRP_SIZE / 2 + 1);
 	Point startP;
 	
-	int hLength = (CPU_GRP_SIZE / 2 - 1);
 	
 	Int dx[CPU_GRP_SIZE / 2 + 1];
 	Point pts[CPU_GRP_SIZE];
+	struct bsgs_bhash bh[CPU_GRP_SIZE];
 
-	Int dy;
-	Int dyn;
-	Int _s;
-	Int _p;
 	Int km,intaux;
-	Point pp;
-	Point pn;
 	grp->Set(dx);
 
 	
@@ -5336,93 +5051,11 @@ void *thread_process_bsgs_both(void *vargp)	{
 					startP  = secp->AddDirect(OriginalPointsBSGS[k],point_aux);
 					uint32_t j = 0;
 					while( j < cycles && bsgs_found[k]== 0 )	{
-						int i;
-						for(i = 0; i < hLength; i++) {
-							dx[i].ModSub(&GSn[i].x,&startP.x);
-						}
-						dx[i].ModSub(&GSn[i].x,&startP.x);  // For the first point
-						dx[i+1].ModSub(&_2GSn.x,&startP.x); // For the next center point
-
-						// Grouped ModInv
-						grp->ModInv();
-						
-						/*
-						We use the fact that P + i*G and P - i*G has the same deltax, so the same inverse
-						We compute key in the positive and negative way from the center of the group
-						*/
-
-						// center point
-						pts[CPU_GRP_SIZE / 2] = startP;
-						
-						for(i = 0; i<hLength; i++) {
-
-							pp = startP;
-							pn = startP;
-
-							// P = startP + i*G
-							dy.ModSub(&GSn[i].y,&pp.y);
-
-							_s.ModMulK1(&dy,&dx[i]);        // s = (p2.y-p1.y)*inverse(p2.x-p1.x);
-							_p.ModSquareK1(&_s);            // _p = pow2(s)
-
-							pp.x.ModNeg();
-							pp.x.ModAdd(&_p);
-							pp.x.ModSub(&GSn[i].x);           // rx = pow2(s) - p1.x - p2.x;
-							
-#if 0
-	  pp.y.ModSub(&GSn[i].x,&pp.x);
-	  pp.y.ModMulK1(&_s);
-	  pp.y.ModSub(&GSn[i].y);           // ry = - p2.y - s*(ret.x-p2.x);  
-#endif
-
-							// P = startP - i*G  , if (x,y) = i*G then (x,-y) = -i*G
-							dyn.Set(&GSn[i].y);
-							dyn.ModNeg();
-							dyn.ModSub(&pn.y);
-
-							_s.ModMulK1(&dyn,&dx[i]);       // s = (p2.y-p1.y)*inverse(p2.x-p1.x);
-							_p.ModSquareK1(&_s);            // _p = pow2(s)
-
-							pn.x.ModNeg();
-							pn.x.ModAdd(&_p);
-							pn.x.ModSub(&GSn[i].x);          // rx = pow2(s) - p1.x - p2.x;
-
-#if 0
-	  pn.y.ModSub(&GSn[i].x,&pn.x);
-	  pn.y.ModMulK1(&_s);
-	  pn.y.ModAdd(&GSn[i].y);          // ry = - p2.y - s*(ret.x-p2.x);  
-#endif
-
-
-							pts[CPU_GRP_SIZE / 2 + (i + 1)] = pp;
-							pts[CPU_GRP_SIZE / 2 - (i + 1)] = pn;
-
-						}
-
-						// First point (startP - (GRP_SZIE/2)*G)
-						pn = startP;
-						dyn.Set(&GSn[i].y);
-						dyn.ModNeg();
-						dyn.ModSub(&pn.y);
-
-						_s.ModMulK1(&dyn,&dx[i]);
-						_p.ModSquareK1(&_s);
-
-						pn.x.ModNeg();
-						pn.x.ModAdd(&_p);
-						pn.x.ModSub(&GSn[i].x);
-
-#if 0
-	pn.y.ModSub(&GSn[i].x,&pn.x);
-	pn.y.ModMulK1(&_s);
-	pn.y.ModAdd(&GSn[i].y);
-#endif
-
-						pts[0] = pn;
+						bsgs_group_x(startP,dx,grp,pts);	/* also advances startP to the next group */
+					bsgs_hash_group(pts,bh);
 						
 						for(int i = 0; i<CPU_GRP_SIZE && bsgs_found[k]== 0; i++) {
-							pts[i].x.Get32Bytes((unsigned char*)xpoint_raw);
-							r = bloom_check(&bloom_bP[((unsigned char)xpoint_raw[0])],xpoint_raw,32);
+							r = bsgs_bloom_check(bh,i);
 							if(r) {
 								r = bsgs_secondcheck(&base_key,((j*1024) + i),k,&keyfound);
 								if(r)	{
@@ -5463,24 +5096,6 @@ void *thread_process_bsgs_both(void *vargp)	{
 							}//End if first check
 							
 						}// For for pts variable
-						
-						// Next start point (startP += (bsSize*GRP_SIZE).G)
-						
-						pp = startP;
-						dy.ModSub(&_2GSn.y,&pp.y);
-
-						_s.ModMulK1(&dy,&dx[i + 1]);
-						_p.ModSquareK1(&_s);
-
-						pp.x.ModNeg();
-						pp.x.ModAdd(&_p);
-						pp.x.ModSub(&_2GSn.x);
-
-						pp.y.ModSub(&_2GSn.x,&pp.x);
-						pp.y.ModMulK1(&_s);
-						pp.y.ModSub(&_2GSn.y);
-						startP = pp;
-						
 						j++;
 					}//while all the aMP points
 			}// End if 
@@ -5633,6 +5248,7 @@ void menu() {
 	printf("-f file     Specify file name with addresses or xpoints or uncompressed public keys\n");
 	printf("-I stride   Stride for xpoint, rmd160 and address, this option don't work with bsgs\n");
 	printf("-k value    Use this only with bsgs mode, k value is factor for M, more speed but more RAM use wisely\n");
+	printf("-F          Use this only with bsgs mode, compact first bloom filter: about half the RAM, use twice the -k\n");
 	printf("-l look     What type of address/hash160 are you looking for <compress, uncompress, both> Only for rmd160 and address\n");
 	printf("-m mode     mode of search for cryptos. (bsgs, xpoint, rmd160, address, vanity) default: address\n");
 	printf("-M          Matrix screen, feel like a h4x0r, but performance will dropped\n");
@@ -5822,7 +5438,6 @@ int addvanity(char *target)	{
 			checkpointer((void *)vanity_rmd_limit_values_A[vanity_rmd_targets][j],__FILE__,"realloc","vanity_rmd_limit_values_A" ,__LINE__ -1 );
 			
 			memcpy(vanity_rmd_limit_values_A[vanity_rmd_targets][j] ,raw_value_A +1,20);
-			
 			j++;	
 			values_A_size = j;
 			target_copy[stringsize] = '1';
@@ -5852,7 +5467,6 @@ int addvanity(char *target)	{
 			vanity_rmd_limit_values_B[vanity_rmd_targets][j] = (uint8_t*)calloc(20,1);
 			checkpointer((void *)vanity_rmd_limit_values_B[vanity_rmd_targets][j],__FILE__,"calloc","vanity_rmd_limit_values_B" ,__LINE__ -1 );
 			memcpy(vanity_rmd_limit_values_B[vanity_rmd_targets][j],raw_value_B+1,20);
-			
 			j++;				
 			values_B_size = j;
 			

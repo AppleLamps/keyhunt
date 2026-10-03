@@ -78,5 +78,8 @@ unset KEYHUNT_SIMD
 head -12 "$TESTS/1to63_65.txt" > pub12.txt
 run "found privkey" -m bsgs -f pub12.txt -r 1:FFFFFFFF -n 0x1000000 -t 4 -q -s 0 -B sequential
 check "bsgs" 11 "$N"
+# Compact first bloom filter: 1000 times more false positives, the same keys
+run "found privkey" -m bsgs -f pub12.txt -r 1:FFFFFFFF -n 0x1000000 -t 4 -q -s 0 -B sequential -F
+check "bsgs -F" 11 "$N"
 
 exit $fail

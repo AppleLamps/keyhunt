@@ -133,6 +133,28 @@ int bloom_add(struct bloom * bloom, const void * buffer, int len);
 
 
 /** ***************************************************************************
+ * bloom_check in three steps, for callers that test many elements at once and
+ * want to overlap the memory accesses: bloom_hash computes the two hashes of an
+ * element, bloom_prefetch starts loading the first bits it tests, and
+ * bloom_check_hashed gives the same answer as bloom_check for that element.
+ * The hashes and bit positions are those of bloom_check (saved filters stay valid).
+ */
+void bloom_hash(const void * buffer, int len, uint64_t * a, uint64_t * b);
+int bloom_check_hashed(struct bloom * bloom, uint64_t a, uint64_t b);
+
+static inline void bloom_prefetch(const struct bloom * bloom, uint64_t a, uint64_t b)
+{
+#if defined(__GNUC__) || defined(__clang__)
+  /* the first probe is always read, the second one about half of the time */
+  __builtin_prefetch(bloom->bf + ((a % bloom->bits) >> 3));
+  __builtin_prefetch(bloom->bf + (((a + b) % bloom->bits) >> 3));
+#else
+  (void)bloom; (void)a; (void)b;
+#endif
+}
+
+
+/** ***************************************************************************
  * Print (to stdout) info about this bloom filter. Debugging aid.
  *
  */

@@ -84,6 +84,23 @@ static int bloom_check_add(struct bloom * bloom, const void * buffer, int len, i
   return 0;
 }
 
+void bloom_hash(const void * buffer, int len, uint64_t * a, uint64_t * b)
+{
+  *a = XXH64(buffer, len, 0x59f2815b16f81798);
+  *b = XXH64(buffer, len, *a);
+}
+
+int bloom_check_hashed(struct bloom * bloom, uint64_t a, uint64_t b)
+{
+  uint8_t i;
+  for (i = 0; i < bloom->hashes; i++) {
+    if (!test_bit(bloom->bf, (a + b*i) % bloom->bits)) {
+      return 0;
+    }
+  }
+  return 1;
+}
+
 // DEPRECATED - Please migrate to bloom_init2.
 int bloom_init(struct bloom * bloom, uint64_t entries, long double error)
 {
