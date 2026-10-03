@@ -419,8 +419,6 @@ public key, so it doubles as a standing watch: rerun `./sidechannel.py 66
 - Herd steering: let the wild herd start at the target minus the interval
   midpoint and run tame and wild in lock step (van Oorschot-Wiener) and
   compare the constant with the symmetric start used now.
-- Distinguished point storage on disk with compact 64 bit records, so a
-  run can be stopped, resumed and shared between machines.
 - Using keyhunt's AVX-512 lanes for the field multiplication inside the
   herd step (the herd is naturally lane parallel).
 - Gaudry-Schost set shapes from Galbraith-Ruprai (tame set wider than the
@@ -436,10 +434,25 @@ python3 novel/nonce_forensics.py    # offline, part of make test
 python3 novel/trace_owner.py        # needs network and openpyxl; writes novel/owner_cluster.json
 make walletfit && ./walletfit 4     # deterministic wallet seed search (about 25 minutes on 4 cores)
 python3 novel/sidechannel.py 66 160 unsolved   # public key side channel watch; needs network and openpyxl
-./kangaroo -p <public key hex> -r <start hex>:<end hex> [-t threads] [-k kangaroos per thread] [-d dp bits] [-n] [-s seed] [-q]
+./kangaroo -p <public key hex> -r <start hex>:<end hex> [-t threads] [-k kangaroos per thread] [-d dp bits] [-n] [-s seed] [-q] [-w work file] [-x max ops]
 ```
 
 `-g` selects Gaudry-Schost; `-e` / `-n` force the negation map on / off
 (default: off for kangaroo, on for Gaudry-Schost). The program prints the
 number of group operations as a multiple of sqrt(W), which is the number
 to compare between methods.
+
+`-w file` keeps the distinguished points on disk: each new one is appended
+(64 bytes per point, flushed every 0.1 s) and the ones already in the file
+are loaded at start, so a run can be stopped and resumed. `-x ops` stops a
+run after about that many group operations (checked every 0.1 s) with exit
+status 2. The 128 byte header pins the public key, the range, the mode and
+the walk parameters (dp bits and jump size, taken from the file on resume so
+every run walks the same jump table); a file of another search is refused.
+Files from several machines merge with `cat a.dp b.dp > all.dp`: the loader
+skips the repeated headers and matches the loaded points against each other,
+so a merge can solve the key before any walking. A resumed run reseeds its
+walkers from the number of points loaded, so it does not replay the old
+walks. In Gaudry-Schost mode (`-g`) the stored points are the whole state of
+the search; in kangaroo mode the herd positions are not saved and a resumed
+herd only gains the old trails, so long runs should use `-g`.
