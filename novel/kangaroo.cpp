@@ -73,6 +73,7 @@
 #include "../secp256k1/IntGroup.h"
 #include "../secp256k1/Point.h"
 #include "../secp256k1/Random.h"
+#include "../secp256k1/FieldMulSimd.h"
 
 #define JUMPS 256
 #define WINDOW 16
@@ -401,7 +402,9 @@ static void *worker(void *arg) {
   std::vector<Int> dx(K);
   IntGroup grp(K); grp.Set(dx.data());
   std::vector<uint8_t> idx(K), bad(K);
-  Int s, p, dy;
+  // one slope, square and y term per lane, so the field multiplies of the
+  // whole batch go through fieldmul_batch (AVX2/AVX-512 when available)
+  std::vector<Int> s(K), p(K), t(K);
   uint64_t local = 0;
   const uint64_t stuck_limit = 64ULL << dp_bits;
   while (!found && !stop) {
@@ -415,17 +418,23 @@ static void *worker(void *arg) {
       if (bad[i]) dx[i].SetInt32(1);
     }
     grp.ModInv();
+    // P + J for every lane, in phases: s = (J.y - P.y)/dx, p = s^2,
+    // x3 = p - P.x - J.x, y3 = s*(P.x - x3) - P.y. Bad lanes (dx = 1) compute a
+    // meaningless point that the re-seed below throws away.
+    for (int i = 0; i < K; i++) s[i].ModSub(&jumpP[idx[i]].y, &w[i].P.y);
+    fieldmul_batch(s.data(), s.data(), dx.data(), K);
+    fieldsqr_batch(p.data(), s.data(), K);
+    for (int i = 0; i < K; i++) {
+      p[i].ModSub(&w[i].P.x); p[i].ModSub(&jumpP[idx[i]].x);   // x3
+      t[i].ModSub(&w[i].P.x, &p[i]);
+    }
+    fieldmul_batch(t.data(), t.data(), s.data(), K);
     for (int i = 0; i < K; i++) {
       Walker &k = w[i];
-      Point &J = jumpP[idx[i]];
       if (bad[i]) { seed(k, k.sign == 0); reseeds++; continue; }
       local++;
-      dy.ModSub(&J.y, &k.P.y);
-      s.ModMulK1(&dy, &dx[i]);
-      p.ModSquareK1(&s);
-      Int x3; x3.ModSub(&p, &k.P.x); x3.ModSub(&J.x);
-      Int y3; y3.ModSub(&k.P.x, &x3); y3.ModMulK1(&s); y3.ModSub(&k.P.y);
-      k.P.x.Set(&x3); k.P.y.Set(&y3);
+      t[i].ModSub(&k.P.y);                                      // y3
+      k.P.x.Set(&p[i]); k.P.y.Set(&t[i]);
       k.dist.Add(&jumpD[idx[i]]);
       canonicalize(k);
       if (use_negation && cycle_check(k)) { cycles++; local++; }   // the escape is one addition
