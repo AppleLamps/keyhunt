@@ -46,6 +46,18 @@ echo 91b24bf9f5288532960ac687abb035127b1d28a5 > unc.rmd
 run "Private Key" -m rmd160 -f unc.rmd -r 1:FFFFF -n 0x100000 -t 4 -q -s 0 -l uncompress
 check "rmd160 -l uncompress" 1 "$N"
 
+# Random mode never runs out of range, so it must end by itself once every target
+# is found. Puzzle 19 is listed twice to check that duplicates count once.
+printf '1NWmZRpHH4XSPwsW6dsS3nrNWfL1yrJj4w\n1NWmZRpHH4XSPwsW6dsS3nrNWfL1yrJj4w\n' > p19.txt
+for mode in address xpoint; do
+	[ $mode = xpoint ] && echo 0385663c8b2f90659e1ccab201694f4f8ec24b3749cfe5030c7c3646a709408e19 > p19.txt
+	timeout 60 "$KH" -m $mode -f p19.txt -b 19 -R -t 4 -q -s 0 -l compress > run.out 2>&1
+	st=$?
+	N=$(grep -c "All targets were found" run.out)
+	[ "$st" -eq 0 ] || N=0
+	check "$mode -R stops once all targets are found" 1 "$N"
+done
+
 # Every lane of the 4 and 8 way hashers must be exercised: single threaded run, stride 1
 run "Private Key" -m address -f "$TESTS/1to32.txt" -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -l compress
 check "address -t 1" 20 "$N"
