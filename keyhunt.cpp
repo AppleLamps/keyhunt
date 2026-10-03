@@ -167,6 +167,8 @@ int minimum_same_bytes(unsigned char* A,unsigned char* B, int length);
 
 void writekey(bool compressed,Int *key);
 void writekeyeth(Int *key);
+void init_found_targets();
+void mark_target_found(const char *value);
 void hash160_block_xonly(int lanes,int nsrc,bool comp,bool uncomp,bool uncomp_neg,Point **src,char (*out)[16][20]);
 void endomorphism_fixkey(int l,Int *key);
 
@@ -337,6 +339,13 @@ char checksum[32],checksum_backup[32];
 char buffer_bloom_file[1024];
 struct bsgs_xvalue *bPtable;
 struct address_value *addressTable;
+
+/* Distinct targets of address, rmd160, xpoint and minikeys mode already found,
+   once all of them are found there is nothing left to search and the program ends */
+uint8_t *targets_found = NULL;
+uint64_t targets_distinct = 0;
+uint64_t targets_found_count = 0;
+volatile int FLAG_ALL_FOUND = 0;
 
 struct oldbloom oldbloom_bP;
 
@@ -967,6 +976,9 @@ int main(int argc, char **argv)	{
 			printf(" done! %" PRIu64 " values were loaded and sorted\n",N);
 			writeFileIfNeeded(fileName);
 		}
+		if(FLAGMODE != MODE_VANITY)	{
+			init_found_targets();
+		}
 	}
 	
 	if(FLAGMODE == MODE_BSGS )	{
@@ -1124,7 +1136,11 @@ int main(int argc, char **argv)	{
 
 
 		if(n_range_diff.IsLower(&BSGS_N) )	{
-			fprintf(stderr,"[E] the given range is small\n");
+			hextemp = n_range_diff.GetBase16();
+			char *hexN = BSGS_N.GetBase16();
+			fprintf(stderr,"[E] the given range is small: its size 0x%s is lower than N = 0x%s, use a smaller -n\n",hextemp,hexN);
+			free(hexN);
+			free(hextemp);
 			exit(EXIT_FAILURE);
 		}
 		
@@ -2171,6 +2187,10 @@ int main(int argc, char **argv)	{
 		if(check_flag)	{
 			continue_flag = 0;
 		}
+		if(FLAG_ALL_FOUND)	{
+			printf("\n[+] All targets were found\n");
+			continue_flag = 0;
+		}
 		if(OUTPUTSECONDS.IsGreater(&ZERO) ){
 			MPZAUX.Set(&seconds);
 			MPZAUX.Mod(&OUTPUTSECONDS);
@@ -2262,6 +2282,14 @@ int main(int argc, char **argv)	{
 			}
 		}
 	}while(continue_flag);
+	if(FLAG_ALL_FOUND)	{
+		/* Hold the key file lock so no thread is cut off in the middle of writing a hit */
+#if defined(_WIN64) && !defined(__CYGWIN__)
+		WaitForSingleObject(write_keys, INFINITE);
+#else
+		pthread_mutex_lock(&write_keys);
+#endif
+	}
 	printf("\nEnd\n");
 #ifdef _WIN64
 	CloseHandle(write_keys);
@@ -2497,6 +2525,7 @@ void *thread_process_minikeys(void *vargp)	{
 									fclose(keys);
 								}
 								printf("\nHIT!! Private Key: %s\npubkey: %s\nminikey: %s\naddress: %s\n",hextemp,public_key_uncompressed_hex,minikeys[k],address[k]);
+								mark_target_found(publickeyhashrmd160_uncompress[k]);
 #if defined(_WIN64) && !defined(__CYGWIN__)
 								ReleaseMutex(write_keys);
 #else
@@ -3806,7 +3835,7 @@ void *thread_process_bsgs(void *vargp)	{
 								}
 								if(salir)	{
 									printf("All points were found\n");
-									exit(EXIT_FAILURE);
+									exit(EXIT_SUCCESS);
 								}
 							} //End if second check
 						}//End if first check
@@ -3952,7 +3981,7 @@ void *thread_process_bsgs_random(void *vargp)	{
 								}
 								if(salir)	{
 									printf("All points were found\n");
-									exit(EXIT_FAILURE);
+									exit(EXIT_SUCCESS);
 								}
 							} //End if second check
 						}//End if first check
@@ -4759,7 +4788,7 @@ void *thread_process_bsgs_dance(void *vargp)	{
 								}
 								if(salir)	{
 									printf("All points were found\n");
-									exit(EXIT_FAILURE);
+									exit(EXIT_SUCCESS);
 								}
 							} //End if second check
 						}//End if first check
@@ -4911,7 +4940,7 @@ void *thread_process_bsgs_backward(void *vargp)	{
 								}
 								if(salir)	{
 									printf("All points were found\n");
-									exit(EXIT_FAILURE);
+									exit(EXIT_SUCCESS);
 								}
 							} //End if second check
 						}//End if first check
@@ -5090,7 +5119,7 @@ void *thread_process_bsgs_both(void *vargp)	{
 									}
 									if(salir)	{
 										printf("All points were found\n");
-										exit(EXIT_FAILURE);
+										exit(EXIT_SUCCESS);
 									}
 								} //End if second check
 							}//End if first check
@@ -5568,6 +5597,14 @@ void writekey(bool compressed,Int *key)	{
 		fclose(keys);
 	}
 	printf("\nHit! Private Key: %s\npubkey: %s\nAddress %s\nrmd160 %s\n",hextemp,public_key_hex,address,hexrmd);
+	if(FLAGMODE == MODE_XPOINT)	{
+		char xvalue[32];
+		publickey.x.Get32Bytes((unsigned char *)xvalue);
+		mark_target_found(xvalue);
+	}
+	else	{
+		mark_target_found(rmdhash);
+	}
 	
 #if defined(_WIN64) && !defined(__CYGWIN__)
 	ReleaseMutex(write_keys);
@@ -5576,6 +5613,43 @@ void writekey(bool compressed,Int *key)	{
 #endif
 	free(hextemp);
 	free(hexrmd);
+}
+
+/* addressTable must be sorted, the same value can be in the file more than once */
+void init_found_targets()	{
+	uint64_t i;
+	targets_found = (uint8_t*) calloc(N > 0 ? N : 1,sizeof(uint8_t));
+	checkpointer((void *)targets_found,__FILE__,"calloc","targets_found" ,__LINE__ -1 );
+	targets_distinct = 0;
+	for(i = 0; i < N; i++)	{
+		if(i == 0 || memcmp(addressTable[i].value,addressTable[i-1].value,sizeof(addressTable[i].value)) != 0)	{
+			targets_distinct++;
+		}
+	}
+}
+
+/* Must be called with write_keys held */
+void mark_target_found(const char *value)	{
+	int64_t lo = 0,hi = (int64_t)N,mid;
+	if(targets_found == NULL)	{
+		return;
+	}
+	while(lo < hi)	{
+		mid = lo + (hi - lo)/2;
+		if(memcmp(addressTable[mid].value,value,sizeof(addressTable[mid].value)) < 0)	{
+			lo = mid + 1;
+		}
+		else	{
+			hi = mid;
+		}
+	}
+	if(lo < (int64_t)N && memcmp(addressTable[lo].value,value,sizeof(addressTable[lo].value)) == 0 && !targets_found[lo])	{
+		targets_found[lo] = 1;
+		targets_found_count++;
+		if(targets_found_count >= targets_distinct)	{
+			FLAG_ALL_FOUND = 1;
+		}
+	}
 }
 
 void writekeyeth(Int *key)	{
@@ -5600,6 +5674,7 @@ void writekeyeth(Int *key)	{
 		fclose(keys);
 	}
 	printf("\n Hit!!!! Private Key: %s\naddress: %s\n",hextemp,address);
+	mark_target_found(hash);
 #if defined(_WIN64) && !defined(__CYGWIN__)
 	ReleaseMutex(write_keys);
 #else

@@ -46,6 +46,19 @@ echo 91b24bf9f5288532960ac687abb035127b1d28a5 > unc.rmd
 run "Private Key" -m rmd160 -f unc.rmd -r 1:FFFFF -n 0x100000 -t 4 -q -s 0 -l uncompress
 check "rmd160 -l uncompress" 1 "$N"
 
+# Random mode never runs out of range, so it must end by itself once every target
+# is found. Puzzle 19 is listed twice to check that duplicates count once.
+# -n keeps the sequential blocks small so the random starts cover the range quickly.
+printf '1NWmZRpHH4XSPwsW6dsS3nrNWfL1yrJj4w\n1NWmZRpHH4XSPwsW6dsS3nrNWfL1yrJj4w\n' > p19.txt
+for mode in address xpoint; do
+	[ $mode = xpoint ] && echo 0385663c8b2f90659e1ccab201694f4f8ec24b3749cfe5030c7c3646a709408e19 > p19.txt
+	timeout 60 "$KH" -m $mode -f p19.txt -b 19 -R -n 0x10000 -t 4 -q -s 0 -l compress > run.out 2>&1
+	st=$?
+	N=$(grep -c "All targets were found" run.out)
+	[ "$st" -eq 0 ] || N=0
+	check "$mode -R stops once all targets are found" 1 "$N"
+done
+
 # Every lane of the 4 and 8 way hashers must be exercised: single threaded run, stride 1
 run "Private Key" -m address -f "$TESTS/1to32.txt" -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -l compress
 check "address -t 1" 20 "$N"
@@ -78,6 +91,18 @@ unset KEYHUNT_SIMD
 head -12 "$TESTS/1to63_65.txt" > pub12.txt
 run "found privkey" -m bsgs -f pub12.txt -r 1:FFFFFFFF -n 0x1000000 -t 4 -q -s 0 -B sequential
 check "bsgs" 11 "$N"
+
+# BSGS ends with status 0 once every point is found (run fails the test otherwise)
+echo 03a2efa402fd5268400c77c20e574ba86409ededee7c4020e4b9f0edbee53de0d4 > p40.pub
+run "found privkey e9ae4933d6" -m bsgs -f p40.pub -b 40 -n 0x100000000 -t 4 -q -s 0
+check "bsgs exits 0 when all points are found" 1 "$N"
+
+# A range smaller than N is refused with a message naming -n
+"$KH" -m bsgs -f p40.pub -b 30 -t 4 -q -s 0 > run.out 2>&1
+st=$?
+N=$(grep -c "use a smaller -n" run.out)
+[ "$st" -ne 0 ] || N=0
+check "bsgs range smaller than N is refused" 1 "$N"
 # Compact first bloom filter: 1000 times more false positives, the same keys
 run "found privkey" -m bsgs -f pub12.txt -r 1:FFFFFFFF -n 0x1000000 -t 4 -q -s 0 -B sequential -F
 check "bsgs -F" 11 "$N"
