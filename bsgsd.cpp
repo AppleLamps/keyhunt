@@ -24,6 +24,7 @@ email: albertobsd@gmail.com
 #include "secp256k1/Int.h"
 #include "secp256k1/IntGroup.h"
 #include "secp256k1/Random.h"
+#include "secp256k1/FieldMulSimd.h"
 
 #include "hash/sha256.h"
 #include "hash/ripemd160.h"
@@ -89,6 +90,49 @@ Point _2Gn;
 
 std::vector<Point> GSn;
 Point _2GSn;
+
+/*
+Lane parallel version of the "startP +/- i*G" loop shared by the BSGS threads:
+for i in [0, hLength) it fills pts[CPU_GRP_SIZE/2 + (i+1)] = startP + G[i] and
+pts[CPU_GRP_SIZE/2 - (i+1)] = startP - G[i] (X only, Y stays startP.y as before).
+dx[i] must already hold 1/(G[i].x - startP.x). The field multiplies and squares
+go through fieldmul_batch/fieldsqr_batch (AVX2/AVX-512 when the CPU has them,
+Int::ModMulK1 otherwise); the additions keep the exact scalar sequence, so the
+result is bit for bit what the scalar loop produced.
+*/
+#define FM_CHUNK 64
+void bsgs_group_x(Point &startP,Point *G,Int *dx,Point *pts)	{
+	Int dy[FM_CHUNK],dyn[FM_CHUNK],sp[FM_CHUNK],sn[FM_CHUNK];
+	int hLength = CPU_GRP_SIZE / 2 - 1;
+	for(int i0 = 0; i0 < hLength; i0 += FM_CHUNK)	{
+		int cnt = hLength - i0 < FM_CHUNK ? hLength - i0 : FM_CHUNK;
+		int k,i;
+		for(k = 0; k < cnt; k++)	{
+			i = i0 + k;
+			dy[k].ModSub(&G[i].y,&startP.y);	// P = startP + i*G
+			dyn[k].Set(&G[i].y);			// P = startP - i*G , if (x,y) = i*G then (x,-y) = -i*G
+			dyn[k].ModNeg();
+			dyn[k].ModSub(&startP.y);
+		}
+		fieldmul_batch(sp,dy,&dx[i0],cnt);	// s = (p2.y-p1.y)*inverse(p2.x-p1.x);
+		fieldmul_batch(sn,dyn,&dx[i0],cnt);
+		fieldsqr_batch(sp,sp,cnt);		// _p = pow2(s)
+		fieldsqr_batch(sn,sn,cnt);
+		for(k = 0; k < cnt; k++)	{
+			i = i0 + k;
+			Point &pp = pts[CPU_GRP_SIZE / 2 + (i + 1)];
+			Point &pn = pts[CPU_GRP_SIZE / 2 - (i + 1)];
+			pp = startP;
+			pn = startP;
+			pp.x.ModNeg();
+			pp.x.ModAdd(&sp[k]);
+			pp.x.ModSub(&G[i].x);		// rx = pow2(s) - p1.x - p2.x;
+			pn.x.ModNeg();
+			pn.x.ModAdd(&sn[k]);
+			pn.x.ModSub(&G[i].x);
+		}
+	}
+}
 
 
 void menu();
@@ -1591,50 +1635,8 @@ void *thread_process_bsgs(void *vargp)	{
 				// center point
 				pts[CPU_GRP_SIZE / 2] = startP;
 				
-				for(i = 0; i<hLength; i++) {
-
-					pp = startP;
-					pn = startP;
-
-					// P = startP + i*G
-					dy.ModSub(&GSn[i].y,&pp.y);
-
-					_s.ModMulK1(&dy,&dx[i]);        // s = (p2.y-p1.y)*inverse(p2.x-p1.x);
-					_p.ModSquareK1(&_s);            // _p = pow2(s)
-
-					pp.x.ModNeg();
-					pp.x.ModAdd(&_p);
-					pp.x.ModSub(&GSn[i].x);           // rx = pow2(s) - p1.x - p2.x;
-					
-#if 0 /* For this BSGS we don't neet to calculate the Y value of intermediate points */
-pp.y.ModSub(&GSn[i].x,&pp.x);
-pp.y.ModMulK1(&_s);
-pp.y.ModSub(&GSn[i].y);           // ry = - p2.y - s*(ret.x-p2.x);  
-#endif
-
-					// P = startP - i*G  , if (x,y) = i*G then (x,-y) = -i*G
-					dyn.Set(&GSn[i].y);
-					dyn.ModNeg();
-					dyn.ModSub(&pn.y);
-
-					_s.ModMulK1(&dyn,&dx[i]);       // s = (p2.y-p1.y)*inverse(p2.x-p1.x);
-					_p.ModSquareK1(&_s);            // _p = pow2(s)
-
-					pn.x.ModNeg();
-					pn.x.ModAdd(&_p);
-					pn.x.ModSub(&GSn[i].x);          // rx = pow2(s) - p1.x - p2.x;
-
-#if 0	/* For this BSGS we don't neet to calculate the Y value of intermediate points */
-pn.y.ModSub(&GSn[i].x,&pn.x);
-pn.y.ModMulK1(&_s);
-pn.y.ModAdd(&GSn[i].y);          // ry = - p2.y - s*(ret.x-p2.x);  
-#endif
-
-
-					pts[CPU_GRP_SIZE / 2 + (i + 1)] = pp;
-					pts[CPU_GRP_SIZE / 2 - (i + 1)] = pn;
-
-				}
+				bsgs_group_x(startP,GSn.data(),dx,pts);
+				i = hLength;
 
 				// First point (startP - (GRP_SZIE/2)*G)
 				pn = startP;
@@ -1901,47 +1903,8 @@ void *thread_bPload(void *vargp)	{
 		
 		pts[CPU_GRP_SIZE / 2] = startP;	//Center point
 
-		for(i = 0; i<hLength; i++) {
-			pp = startP;
-			pn = startP;
-
-			// P = startP + i*G
-			dy.ModSub(&Gn[i].y,&pp.y);
-
-			_s.ModMulK1(&dy,&dx[i]);        // s = (p2.y-p1.y)*inverse(p2.x-p1.x);
-			_p.ModSquareK1(&_s);            // _p = pow2(s)
-
-			pp.x.ModNeg();
-			pp.x.ModAdd(&_p);
-			pp.x.ModSub(&Gn[i].x);           // rx = pow2(s) - p1.x - p2.x;
-
-#if 0
-			pp.y.ModSub(&Gn[i].x,&pp.x);
-			pp.y.ModMulK1(&_s);
-			pp.y.ModSub(&Gn[i].y);           // ry = - p2.y - s*(ret.x-p2.x);
-#endif
-
-			// P = startP - i*G  , if (x,y) = i*G then (x,-y) = -i*G
-			dyn.Set(&Gn[i].y);
-			dyn.ModNeg();
-			dyn.ModSub(&pn.y);
-
-			_s.ModMulK1(&dyn,&dx[i]);      // s = (p2.y-p1.y)*inverse(p2.x-p1.x);
-			_p.ModSquareK1(&_s);            // _p = pow2(s)
-
-			pn.x.ModNeg();
-			pn.x.ModAdd(&_p);
-			pn.x.ModSub(&Gn[i].x);          // rx = pow2(s) - p1.x - p2.x;
-
-#if 0
-			pn.y.ModSub(&Gn[i].x,&pn.x);
-			pn.y.ModMulK1(&_s);
-			pn.y.ModAdd(&Gn[i].y);          // ry = - p2.y - s*(ret.x-p2.x);
-#endif
-
-			pts[CPU_GRP_SIZE / 2 + (i + 1)] = pp;
-			pts[CPU_GRP_SIZE / 2 - (i + 1)] = pn;
-		}
+		bsgs_group_x(startP,Gn.data(),dx,pts);
+		i = hLength;
 
 		// First point (startP - (GRP_SZIE/2)*G)
 		pn = startP;
@@ -2055,47 +2018,8 @@ void *thread_bPload_2blooms(void *vargp)	{
 		
 		pts[CPU_GRP_SIZE / 2] = startP;	//Center point
 
-		for(i = 0; i<hLength; i++) {
-			pp = startP;
-			pn = startP;
-
-			// P = startP + i*G
-			dy.ModSub(&Gn[i].y,&pp.y);
-
-			_s.ModMulK1(&dy,&dx[i]);        // s = (p2.y-p1.y)*inverse(p2.x-p1.x);
-			_p.ModSquareK1(&_s);            // _p = pow2(s)
-
-			pp.x.ModNeg();
-			pp.x.ModAdd(&_p);
-			pp.x.ModSub(&Gn[i].x);           // rx = pow2(s) - p1.x - p2.x;
-
-#if 0
-			pp.y.ModSub(&Gn[i].x,&pp.x);
-			pp.y.ModMulK1(&_s);
-			pp.y.ModSub(&Gn[i].y);           // ry = - p2.y - s*(ret.x-p2.x);
-#endif
-
-			// P = startP - i*G  , if (x,y) = i*G then (x,-y) = -i*G
-			dyn.Set(&Gn[i].y);
-			dyn.ModNeg();
-			dyn.ModSub(&pn.y);
-
-			_s.ModMulK1(&dyn,&dx[i]);      // s = (p2.y-p1.y)*inverse(p2.x-p1.x);
-			_p.ModSquareK1(&_s);            // _p = pow2(s)
-
-			pn.x.ModNeg();
-			pn.x.ModAdd(&_p);
-			pn.x.ModSub(&Gn[i].x);          // rx = pow2(s) - p1.x - p2.x;
-
-#if 0
-			pn.y.ModSub(&Gn[i].x,&pn.x);
-			pn.y.ModMulK1(&_s);
-			pn.y.ModAdd(&Gn[i].y);          // ry = - p2.y - s*(ret.x-p2.x);
-#endif
-
-			pts[CPU_GRP_SIZE / 2 + (i + 1)] = pp;
-			pts[CPU_GRP_SIZE / 2 - (i + 1)] = pn;
-		}
+		bsgs_group_x(startP,Gn.data(),dx,pts);
+		i = hLength;
 
 		// First point (startP - (GRP_SZIE/2)*G)
 		pn = startP;
