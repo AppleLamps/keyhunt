@@ -119,14 +119,15 @@ Objects live in `build/`, builds are incremental, and changing any option rebuil
 | `-f file` | input file with the targets, one per line |
 | `-r start:end` | range in hex. `end` can be omitted to search up to the curve order |
 | `-b bits` | search the N bit range, for example `-b 66` is `0x20000000000000000` to `0x3ffffffffffffffff`. 1 to 256 |
-| `-R` | random search: pick random bases inside the range. Without it the range is scanned sequentially (BSGS: same as `-B random`) |
+| `-R` | random search: pick random bases inside the range (default, BSGS: same as `-B random`) |
+| `-L` | sequential search: scan the range from its start upwards (BSGS: same as `-B sequential`) |
 | `-n number` | address, rmd160, xpoint, vanity, minikeys: keys scanned per block (default `0x100000000`). BSGS: the size of the baby step table, see [BSGS](#bsgs-mode-baby-step-giant-step). Hex needs a `0x` prefix, otherwise decimal |
 | `-t number` | threads (default 1) |
 | `-l look` | `compress`, `uncompress` or `both` (default). address and rmd160 |
 | `-c crypto` | `btc` (default) or `eth`. address mode |
 | `-e` | enable [endomorphism](#endomorphism) (address, rmd160, xpoint, vanity). Not compatible with BSGS |
 | `-I stride` | step between consecutive keys. Not for BSGS |
-| `-B mode` | BSGS order: `sequential` (default), `backward`, `both`, `random`, `dance` |
+| `-B mode` | BSGS order: `sequential`, `backward`, `both`, `random` (default), `dance` |
 | `-k factor` | BSGS: multiplies the table size, more RAM for more speed |
 | `-S` | save the generated bloom filters and tables to disk and load them next time |
 | `-6` | skip the SHA-256 checksum when loading saved files |
@@ -292,10 +293,10 @@ Do not load more than 100 to 1000 public keys at once, the speed drops with ever
 
 | `-B` | Order |
 | --- | --- |
-| `sequential` | from the start of the range upwards (default) |
+| `sequential` | from the start of the range upwards (the same as `-L`) |
 | `backward` | from the end downwards |
 | `both` | from both ends towards the middle |
-| `random` | random positions (the same as `-R`) |
+| `random` | random positions (default, the same as `-R`) |
 | `dance` | each cycle randomly takes the next block from the bottom of the remaining range, from the top, or from a random position |
 
 #### The values of `-n` and `-k`
