@@ -275,6 +275,10 @@ int fieldmul_lanes() {
   return kernel_lanes[fieldmul_kernel()];
 }
 
+int fieldmul_kernel_lanes(FieldMulKernel k) {
+  return kernel_lanes[k];
+}
+
 void fieldmul_batch_with(FieldMulKernel k, Int *r, const Int *a, const Int *b, int n) {
   int i = 0;
   int lanes = kernel_lanes[k];
