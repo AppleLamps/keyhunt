@@ -300,7 +300,8 @@ int FLAGENDOMORPHISM = 0;
 int FLAGBLOOMMULTIPLIER = 1;
 int FLAGVANITY = 0;
 int FLAGBASEMINIKEY = 0;
-int FLAGBSGSMODE = 0;
+int FLAGBSGSMODE = 3;
+int FLAGBSGSMODESET = 0;
 int FLAGDEBUG = 0;
 int FLAGQUIET = 0;
 int FLAGMATRIX = 0;
@@ -324,7 +325,7 @@ int FLAGFILE = 0;
 int FLAGMODE = MODE_ADDRESS;
 int FLAGCRYPTO = 0;
 int FLAGRAWDATA	= 0;
-int FLAGRANDOM = 0;
+int FLAGRANDOM = 1;
 int FLAG_N = 0;
 int FLAGPRECALCUTED_P_FILE = 0;
 
@@ -513,7 +514,7 @@ int main(int argc, char **argv)	{
 	
 	printf("[+] Version %s, developed by AlbertoBSD\n",version);
 
-	while ((c = getopt(argc, argv, "dehF6MqRSB:b:c:C:E:f:I:k:l:m:N:n:p:r:s:t:v:G:8:z:")) != -1) {
+	while ((c = getopt(argc, argv, "dehF6LMqRSB:b:c:C:E:f:I:k:l:m:N:n:p:r:s:t:v:G:8:z:")) != -1) {
 		switch(c) {
 			case 'h':
 				menu();
@@ -526,6 +527,7 @@ int main(int argc, char **argv)	{
 				index_value = indexOf(optarg,bsgs_modes,5);
 				if(index_value >= 0 && index_value <= 4)	{
 					FLAGBSGSMODE = index_value;
+					FLAGBSGSMODESET = 1;
 					//printf("[+] BSGS mode %s\n",optarg);
 				}
 				else	{
@@ -702,9 +704,10 @@ int main(int argc, char **argv)	{
 				printf("[+] Quiet thread output\n");
 			break;
 			case 'R':
-				printf("[+] Random mode\n");
-				FLAGRANDOM = 1;
-				FLAGBSGSMODE =  3;
+				/* random is the default: -R is kept for old command lines and never overrides -L */
+			break;
+			case 'L':
+				FLAGRANDOM = 0;
 			break;
 			case 'r':
 				if(optarg != NULL)	{
@@ -833,7 +836,18 @@ int main(int argc, char **argv)	{
 	}
 	init_generator();
 	if(FLAGMODE == MODE_BSGS )	{
+		if(!FLAGBSGSMODESET)	{	/* -B not given: -L means sequential, otherwise random (the default) */
+			FLAGBSGSMODE = FLAGRANDOM ? 3 : 0;
+		}
 		printf("[+] Mode BSGS %s\n",bsgs_modes[FLAGBSGSMODE]);
+	}
+	else	{
+		if(FLAGMODE == MODE_MINIKEYS && FLAGBASEMINIKEY && FLAGRANDOM)	{
+			/* an explicit base minikey only makes sense for a sequential walk from it */
+			FLAGRANDOM = 0;
+			printf("[+] Base minikey given with -C: sequential search from it\n");
+		}
+		printf("[+] %s mode\n",FLAGRANDOM ? "Random" : "Sequential");
 	}
 	
 	if(FLAGFILE == 0) {
@@ -5257,7 +5271,7 @@ void sha256sse_23(uint8_t *src0, uint8_t *src1, uint8_t *src2, uint8_t *src3, ui
 void menu() {
 	printf("\nUsage:\n");
 	printf("-h          show this help\n");
-	printf("-B Mode     BSGS now have some modes <sequential, backward, both, random, dance>\n");
+	printf("-B Mode     BSGS search order <sequential, backward, both, random, dance> default: random (sequential with -L)\n");
 	printf("-b bits     For some puzzles you only need some numbers of bits in the test keys.\n");
 	printf("-c crypto   Search for specific crypto. <btc, eth> valid only w/ -m address\n");
 	printf("-C mini     Set the minikey Base only 22 character minikeys, ex: SRPqx8QiwnW4WNWnTVa2W5\n");
@@ -5270,11 +5284,12 @@ void menu() {
 	printf("-l look     What type of address/hash160 are you looking for <compress, uncompress, both> Only for rmd160 and address\n");
 	printf("-m mode     mode of search for cryptos. (bsgs, xpoint, rmd160, address, vanity) default: address\n");
 	printf("-M          Matrix screen, feel like a h4x0r, but performance will dropped\n");
-	printf("-n number   Check for N sequential numbers before the random chosen, this only works with -R option\n");
+	printf("-L          Sequential (linear) search: scan the range from its start upwards instead of random bases\n");
+	printf("-n number   Check for N sequential numbers before the random chosen, random mode only\n");
 	printf("            Use -n to set the N for the BSGS process. Bigger N more RAM needed\n");
 	printf("-q          Quiet the thread output\n");
 	printf("-r SR:EN    StarRange:EndRange, the end range can be omitted for search from start range to N-1 ECC value\n");
-	printf("-R          Random, this is the default behavior\n");
+	printf("-R          Random search inside the range, this is the default behavior (see -L)\n");
 	printf("-s ns       Number of seconds for the stats output, 0 to omit output.\n");
 	printf("-S          S is for SAVING in files BSGS data (Bloom filters and bPtable)\n");
 	printf("-6          to skip sha256 Checksum on data files");

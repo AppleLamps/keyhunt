@@ -35,15 +35,15 @@ run() {
 
 # Keys 1 to 0xFFFFF: 20 of the solved puzzles fall in this range
 for mode in compress both; do
-	run "Private Key" -m address -f "$TESTS/1to32.txt" -r 1:FFFFF -n 0x100000 -t 4 -q -s 0 -l $mode
+	run "Private Key" -m address -f "$TESTS/1to32.txt" -r 1:FFFFF -n 0x100000 -t 4 -q -s 0 -L -l $mode
 	check "address -l $mode" 20 "$N"
-	run "Private Key" -m rmd160 -f "$TESTS/1to32.rmd" -r 1:FFFFF -n 0x100000 -t 4 -q -s 0 -l $mode
+	run "Private Key" -m rmd160 -f "$TESTS/1to32.rmd" -r 1:FFFFF -n 0x100000 -t 4 -q -s 0 -L -l $mode
 	check "rmd160 -l $mode" 20 "$N"
 done
 
 # RIPEMD160 of the uncompressed public key of private key 1
 echo 91b24bf9f5288532960ac687abb035127b1d28a5 > unc.rmd
-run "Private Key" -m rmd160 -f unc.rmd -r 1:FFFFF -n 0x100000 -t 4 -q -s 0 -l uncompress
+run "Private Key" -m rmd160 -f unc.rmd -r 1:FFFFF -n 0x100000 -t 4 -q -s 0 -L -l uncompress
 check "rmd160 -l uncompress" 1 "$N"
 
 # Random mode never runs out of range, so it must end by itself once every target
@@ -60,27 +60,27 @@ for mode in address xpoint; do
 done
 
 # Every lane of the 4 and 8 way hashers must be exercised: single threaded run, stride 1
-run "Private Key" -m address -f "$TESTS/1to32.txt" -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -l compress
+run "Private Key" -m address -f "$TESTS/1to32.txt" -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -L -l compress
 check "address -t 1" 20 "$N"
 
 # Endomorphism: the six x-only hashes per point go through the 8/16 way kernels
 # when available. Every SIMD setting must give the same hits.
 for simd in "" avx2 none; do
 	export KEYHUNT_SIMD=$simd
-	run "Private Key" -m address -f "$TESTS/1to32.txt" -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -l compress -e
+	run "Private Key" -m address -f "$TESTS/1to32.txt" -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -L -l compress -e
 	check "address -e ${simd:-auto}" 20 "$N"
-	run "Private Key" -m address -f "$TESTS/1to32.txt" -r 1:FFFFF -n 0x100000 -t 4 -q -s 0 -l both -e
+	run "Private Key" -m address -f "$TESTS/1to32.txt" -r 1:FFFFF -n 0x100000 -t 4 -q -s 0 -L -l both -e
 	check "address -e -l both ${simd:-auto}" 20 "$N"
-	run "Private Key: 1$" -m rmd160 -f unc.rmd -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -l uncompress -e
+	run "Private Key: 1$" -m rmd160 -f unc.rmd -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -L -l uncompress -e
 	check "rmd160 -e -l uncompress ${simd:-auto}" 1 "$N"
 	# Vanity: the counts are the ones of the 4 way SSE path
-	run "Vanity Private Key" -m vanity -v 1Good -v 1Bad -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -l compress
+	run "Vanity Private Key" -m vanity -v 1Good -v 1Bad -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -L -l compress
 	check "vanity ${simd:-auto}" 22 "$N"
-	run "Vanity Private Key" -m vanity -v 1Good -v 1Bad -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -l both
+	run "Vanity Private Key" -m vanity -v 1Good -v 1Bad -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -L -l both
 	check "vanity -l both ${simd:-auto}" 33 "$N"
-	run "Vanity Private Key" -m vanity -v 1Good -v 1Bad -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -l compress -e
+	run "Vanity Private Key" -m vanity -v 1Good -v 1Bad -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -L -l compress -e
 	check "vanity -e ${simd:-auto}" 82 "$N"
-	run "Vanity Private Key" -m vanity -v 1Good -v 1Bad -r 1:FFFFF -n 0x100000 -t 4 -q -s 0 -l both -e
+	run "Vanity Private Key" -m vanity -v 1Good -v 1Bad -r 1:FFFFF -n 0x100000 -t 4 -q -s 0 -L -l both -e
 	check "vanity -e -l both ${simd:-auto}" 159 "$N"
 done
 unset KEYHUNT_SIMD
@@ -91,11 +91,11 @@ unset KEYHUNT_SIMD
 # unsupported setting falls back to scalar, so the runs are safe everywhere).
 for fm in ifma avx512 avx2 none; do
 	export KEYHUNT_FIELD_SIMD=$fm
-	run "Private Key" -m address -f "$TESTS/1to32.txt" -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -l both
+	run "Private Key" -m address -f "$TESTS/1to32.txt" -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -L -l both
 	check "address -l both field $fm" 20 "$N"
-	run "Private Key" -m address -f "$TESTS/1to32.txt" -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -l compress -e
+	run "Private Key" -m address -f "$TESTS/1to32.txt" -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -L -l compress -e
 	check "address -e field $fm" 20 "$N"
-	run "Vanity Private Key" -m vanity -v 1Good -v 1Bad -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -l both
+	run "Vanity Private Key" -m vanity -v 1Good -v 1Bad -r 1:FFFFF -n 0x100000 -t 1 -q -s 0 -L -l both
 	check "vanity -l both field $fm" 33 "$N"
 done
 unset KEYHUNT_FIELD_SIMD
@@ -109,7 +109,7 @@ check "bsgs" 11 "$N"
 
 # BSGS ends with status 0 once every point is found (run fails the test otherwise)
 echo 03a2efa402fd5268400c77c20e574ba86409ededee7c4020e4b9f0edbee53de0d4 > p40.pub
-run "found privkey e9ae4933d6" -m bsgs -f p40.pub -b 40 -n 0x100000000 -t 4 -q -s 0
+run "found privkey e9ae4933d6" -m bsgs -f p40.pub -b 40 -n 0x100000000 -t 4 -q -s 0 -L
 check "bsgs exits 0 when all points are found" 1 "$N"
 
 # A range smaller than N is refused with a message naming -n
