@@ -704,7 +704,7 @@ int main(int argc, char **argv)	{
 				printf("[+] Quiet thread output\n");
 			break;
 			case 'R':
-				FLAGRANDOM = 1;
+				/* random is the default: -R is kept for old command lines and never overrides -L */
 			break;
 			case 'L':
 				FLAGRANDOM = 0;
@@ -842,6 +842,11 @@ int main(int argc, char **argv)	{
 		printf("[+] Mode BSGS %s\n",bsgs_modes[FLAGBSGSMODE]);
 	}
 	else	{
+		if(FLAGMODE == MODE_MINIKEYS && FLAGBASEMINIKEY && FLAGRANDOM)	{
+			/* an explicit base minikey only makes sense for a sequential walk from it */
+			FLAGRANDOM = 0;
+			printf("[+] Base minikey given with -C: sequential search from it\n");
+		}
 		printf("[+] %s mode\n",FLAGRANDOM ? "Random" : "Sequential");
 	}
 	

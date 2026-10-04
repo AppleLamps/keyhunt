@@ -50,7 +50,7 @@ make -j$(nproc)
 Find the solved puzzles whose keys are below `0xFFFFF` (finishes in about a second):
 
 ```
-./keyhunt -m address -f tests/1to32.txt -r 1:FFFFF -n 0x100000 -t 4 -s 0
+./keyhunt -m address -f tests/1to32.txt -r 1:FFFFF -n 0x100000 -t 4 -s 0 -L
 ```
 
 Try your luck on puzzle 66 (random search, add `-t` with your core count):
@@ -120,7 +120,7 @@ Objects live in `build/`, builds are incremental, and changing any option rebuil
 | `-r start:end` | range in hex. `end` can be omitted to search up to the curve order |
 | `-b bits` | search the N bit range, for example `-b 66` is `0x20000000000000000` to `0x3ffffffffffffffff`. 1 to 256 |
 | `-R` | random search: pick random bases inside the range (default, BSGS: same as `-B random`) |
-| `-L` | sequential search: scan the range from its start upwards (BSGS: same as `-B sequential`) |
+| `-L` | sequential search: scan the range from its start upwards (BSGS: same as `-B sequential`). Wins over `-R` whatever the order. Implied by `-C` in minikeys mode |
 | `-n number` | address, rmd160, xpoint, vanity, minikeys: keys scanned per block (default `0x100000000`). BSGS: the size of the baby step table, see [BSGS](#bsgs-mode-baby-step-giant-step). Hex needs a `0x` prefix, otherwise decimal |
 | `-t number` | threads (default 1) |
 | `-l look` | `compress`, `uncompress` or `both` (default). address and rmd160 |
@@ -156,7 +156,7 @@ The default. The input file is a list of Bitcoin addresses, for example `tests/1
 ```
 
 ```
-./keyhunt -m address -f tests/1to32.txt -r 1:FFFFF -n 0x100000 -t 2 -s 0
+./keyhunt -m address -f tests/1to32.txt -r 1:FFFFF -n 0x100000 -t 2 -s 0 -L
 ```
 
 ```
@@ -212,14 +212,14 @@ Same as address mode, but the file holds the RIPEMD-160 hash (the 20 byte hash16
 ```
 
 ```
-./keyhunt -m rmd160 -f tests/1to32.rmd -r 1:FFFFF -n 0x100000 -l compress -s 0
+./keyhunt -m rmd160 -f tests/1to32.rmd -r 1:FFFFF -n 0x100000 -l compress -s 0 -L
 ```
 
 The hash of the *uncompressed* public key of private key 1:
 
 ```
 echo 91b24bf9f5288532960ac687abb035127b1d28a5 > u.rmd
-./keyhunt -m rmd160 -f u.rmd -r 1:FFFF -n 0x10000 -l uncompress -s 0
+./keyhunt -m rmd160 -f u.rmd -r 1:FFFF -n 0x10000 -l uncompress -s 0 -L
 ```
 
 ```
@@ -251,7 +251,7 @@ Example with a few values subtracted from and added to the puzzle 40 key (`tests
 ```
 
 ```
-./keyhunt -m xpoint -f tests/substracted40.txt -n 65536 -t 4 -b 40
+./keyhunt -m xpoint -f tests/substracted40.txt -n 65536 -t 4 -b 40 -L
 ```
 
 The hit `800258a2ce` was found for the line marked `+ 453856235784`, so the real key is `0x800258a2ce + 453856235784 = 0xE9AE4933D6`.
@@ -270,7 +270,7 @@ Input: one public key per line, compressed or uncompressed, mixed freely. Anythi
 Do not load more than 100 to 1000 public keys at once, the speed drops with every key.
 
 ```
-./keyhunt -m bsgs -f tests/1to63_65.txt -r 1:FFFFFFFF -n 0x1000000 -t 2 -q -s 0
+./keyhunt -m bsgs -f tests/1to63_65.txt -r 1:FFFFFFFF -n 0x1000000 -t 2 -q -s 0 -L
 ```
 
 ```
@@ -398,7 +398,7 @@ Random minikeys: `./keyhunt -m minikeys -f tests/minikeys.txt -n 0x10000 -q -R`
 Use `-c eth` with address mode. The file holds Ethereum addresses (`tests/1to32.eth`):
 
 ```
-./keyhunt -c eth -f tests/1to32.eth -r 1:FFFF -n 0x10000 -s 0 -q
+./keyhunt -c eth -f tests/1to32.eth -r 1:FFFF -n 0x10000 -s 0 -q -L
 ```
 
 ```
