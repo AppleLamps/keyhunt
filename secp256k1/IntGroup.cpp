@@ -40,7 +40,7 @@ void IntGroup::Set(Int *pts) {
    inversion (product tree) instead of one inversion per segment. */
 #define CHAINS 4
 
-void IntGroup::ModInv() {
+void IntGroup::ModInvScalar() {
 
   if (size < 2 * CHAINS) {
     // small group: plain single chain
@@ -107,4 +107,61 @@ void IntGroup::ModInv() {
   }
   for (int k = 0; k < CHAINS; k++) ints[start[k]].Set(&inverse[k]);
 
+}
+
+/* Lane parallel Montgomery batch inversion. The group is split into L
+   interleaved chains (L = lanes of the field multiply kernel), chain k holding
+   the elements k, k+L, k+2L, ... so that the L multiplications of one step are
+   contiguous and go through one call of fieldmul_batch. The L chain totals are
+   inverted with the scalar single chain batch inversion (one modular
+   inversion), then the back substitution runs the same way. The scalar
+   version is used when no SIMD kernel is available or the group is small.
+   Like the scalar version this relies on ModMulK1 returning canonical
+   values, which holds for field elements that are not all special (a chain
+   of p-2 values would hit its dropped final carry). */
+void IntGroup::ModInv() {
+  ModInvWith(fieldmul_kernel());
+}
+
+void IntGroup::ModInvWith(FieldMulKernel k) {
+  int L = fieldmul_kernel_lanes(k);
+  if (L == 0 || size < 4 * L) {
+    ModInvScalar();
+    return;
+  }
+  int len = (size + L - 1) / L;        // steps (longest chain)
+  int cnt = size - (len - 1) * L;      // elements of the last step, 1..L
+
+  // prefix products: subp[i] = ints[i-L] * ... * ints[k] along the chain
+  for (int i = 0; i < L; i++) subp[i].Set(&ints[i]);
+  for (int j = 1; j < len; j++) {
+    int c = j == len - 1 ? cnt : L;
+    fieldmul_batch_with(k, &subp[j * L], &subp[(j - 1) * L], &ints[j * L], c);
+  }
+
+  // chain totals and their inverses with one modular inversion
+  Int tot[64], inverse[64];            // L <= 8 today
+  Int prefix[64], inv;
+  for (int i = 0; i < L; i++) tot[i].Set(&subp[(i < cnt ? len - 1 : len - 2) * L + i]);
+  prefix[0].Set(&tot[0]);
+  for (int i = 1; i < L; i++) prefix[i].ModMulK1(&prefix[i - 1], &tot[i]);
+  inv.Set(&prefix[L - 1]);
+  // ModMulK1 may leave a value in [P, 2^256); ModInv needs 0 < x < P
+  if (!inv.IsLower(Int::GetFieldCharacteristic())) inv.Sub(Int::GetFieldCharacteristic());
+  inv.ModInv();
+  for (int i = L - 1; i > 0; i--) {
+    inverse[i].ModMulK1(&prefix[i - 1], &inv);
+    inv.ModMulK1(&tot[i]);
+  }
+  inverse[0].Set(&inv);
+
+  // back substitution: ints[i] = subp[i-L] * inverse_k, inverse_k *= old ints[i]
+  Int newValue[64];
+  for (int j = len - 1; j > 0; j--) {
+    int c = j == len - 1 ? cnt : L;
+    fieldmul_batch_with(k, newValue, &subp[(j - 1) * L], inverse, c);
+    fieldmul_batch_with(k, inverse, inverse, &ints[j * L], c);
+    for (int i = 0; i < c; i++) ints[j * L + i].Set(&newValue[i]);
+  }
+  for (int i = 0; i < L; i++) ints[i].Set(&inverse[i]);
 }

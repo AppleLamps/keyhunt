@@ -8,6 +8,7 @@
 #include "../secp256k1/SECP256k1.h"
 #include "../secp256k1/Int.h"
 #include "../secp256k1/IntGroup.h"
+#include "../secp256k1/FieldMulSimd.h"
 
 static Int P;
 static std::mt19937_64 rng(777);
@@ -83,26 +84,35 @@ int main() {
 		if (!got.IsEqual(&want)) fail("ModSquareK1", a, a, got, want);
 	}
 
-	// batch inversion against the single inversion, several group sizes
-	for (int size : {1, 2, 7, 8, 9, 100, 513, 1024}) {
+	// batch inversion against the single inversion, several group sizes and
+	// every field multiply kernel this CPU has (lane parallel chains)
+	for (int kk = 0; kk <= 3; kk++) {
+	FieldMulKernel kern = (FieldMulKernel)kk;
+	if (!fieldmul_kernel_available(kern)) continue;
+	for (int size : {1, 2, 7, 8, 9, 31, 32, 33, 100, 513, 1024}) {
 		Int *v = new Int[size];
 		Int *ref = new Int[size];
 		for (int i = 0; i < size; i++) {
-			random_elem(v[i], 4 + i); if (v[i].IsZero()) v[i].SetInt32(2);
+			// edge values rotate across the lane parallel chains (element i sits in
+			// chain i % lanes): a chain made only of p-1 or p-2 would feed ModMulK1
+			// non canonical inputs (values in [P, 2^256)) step after step, for which
+			// it drops a carry; real groups never do that (random field elements)
+			random_elem(v[i], 4 + i + i / 8); if (v[i].IsZero()) v[i].SetInt32(2);
 			ref[i].Set(&v[i]);
 			ref[i].ModInv();
 		}
 		IntGroup g(size);
 		g.Set(v);
-		g.ModInv();
+		g.ModInvWith(kern);
 		for (int i = 0; i < size; i++) {
 			// ModMulK1 may leave a value in [P, 2^256): compare the residues
 			if (!v[i].IsLower(&P)) v[i].Sub(&P);
 			if (!ref[i].IsLower(&P)) ref[i].Sub(&P);
-			if (!v[i].IsEqual(&ref[i])) { if (++failures < 5) printf("[test_int] IntGroup::ModInv size=%d MISMATCH at %d\n", size, i); }
+			if (!v[i].IsEqual(&ref[i])) { if (++failures < 5) printf("[test_int] IntGroup::ModInv %s size=%d MISMATCH at %d\n", fieldmul_kernel_name(kern), size, i); }
 		}
 		delete[] v;
 		delete[] ref;
+	}
 	}
 
 	if (failures) { printf("[test_int] FAILED (%d mismatches)\n", failures); return 1; }

@@ -34,6 +34,8 @@ enum FieldMulKernel {
 // (0 for scalar). The selection is made once, on the first call.
 FieldMulKernel fieldmul_kernel();
 int fieldmul_lanes();
+// Lane count of kernel k (0 for scalar).
+int fieldmul_kernel_lanes(FieldMulKernel k);
 const char *fieldmul_kernel_name(FieldMulKernel k);
 // True when this CPU can run kernel k.
 bool fieldmul_kernel_available(FieldMulKernel k);

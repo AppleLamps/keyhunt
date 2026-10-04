@@ -19,6 +19,7 @@
 #define INTGROUPH
 
 #include "Int.h"
+#include "FieldMulSimd.h"
 #include <vector>
 
 class IntGroup {
@@ -29,8 +30,12 @@ public:
 	~IntGroup();
 	void Set(Int *pts);
 	void ModInv();
+	// Same, with an explicit field multiply kernel (tests)
+	void ModInvWith(FieldMulKernel k);
 
 private:
+
+	void ModInvScalar();
 
 	Int *ints;
   Int *subp;
