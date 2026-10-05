@@ -69,7 +69,7 @@ CXXC_SRCS := util.c sha3/sha3.c sha3/keccak.c
 CXX_SRCS := oldbloom/bloom.cpp bloom/bloom.cpp \
             secp256k1/Int.cpp secp256k1/Point.cpp secp256k1/SECP256K1.cpp \
             secp256k1/IntMod.cpp secp256k1/Random.cpp secp256k1/IntGroup.cpp \
-            secp256k1/FieldMulSimd.cpp \
+            secp256k1/FieldMulSimd.cpp secp256k1/GroupAdd52.cpp \
             hash/ripemd160.cpp hash/sha256.cpp hash/ripemd160_sse.cpp hash/sha256_sse.cpp \
             hash/hash160_simd.cpp
 
@@ -180,9 +180,9 @@ $(BUILD)/legacy/base58/base58.o $(BUILD)/legacy/xxhash/xxhash.o: $(BUILD)/legacy
 
 # ---- tests ------------------------------------------------------------------
 
-TEST_BINS := $(BUILD)/test_hash160 $(BUILD)/test_int $(BUILD)/test_fieldmul
+TEST_BINS := $(BUILD)/test_hash160 $(BUILD)/test_int $(BUILD)/test_fieldmul $(BUILD)/test_groupadd52
 TEST_HASH_OBJS := $(addprefix $(BUILD)/hash/,hash160_simd.o sha256.o ripemd160.o ripemd160_sse.o sha256_sse.o) \
-                  $(addprefix $(BUILD)/secp256k1/,Int.o Point.o SECP256K1.o IntMod.o Random.o IntGroup.o FieldMulSimd.o) \
+                  $(addprefix $(BUILD)/secp256k1/,Int.o Point.o SECP256K1.o IntMod.o Random.o IntGroup.o FieldMulSimd.o GroupAdd52.o) \
                   $(BUILD)/util.o
 
 $(BUILD)/test_hash160: $(BUILD)/tests/test_hash160.o $(TEST_HASH_OBJS)
@@ -194,6 +194,10 @@ $(BUILD)/test_int: $(BUILD)/tests/test_int.o $(TEST_HASH_OBJS)
 	$(Q)$(CXX) $(MAIN_CXXFLAGS) -o $@ $^ $(LDLIBS)
 
 $(BUILD)/test_fieldmul: $(BUILD)/tests/test_fieldmul.o $(TEST_HASH_OBJS)
+	@echo "  LD    $@"
+	$(Q)$(CXX) $(MAIN_CXXFLAGS) -o $@ $^ $(LDLIBS)
+
+$(BUILD)/test_groupadd52: $(BUILD)/tests/test_groupadd52.o $(TEST_HASH_OBJS)
 	@echo "  LD    $@"
 	$(Q)$(CXX) $(MAIN_CXXFLAGS) -o $@ $^ $(LDLIBS)
 
@@ -209,6 +213,7 @@ test: keyhunt kangaroo lcgfit lineage walletfit $(TEST_BINS)
 	@$(BUILD)/test_hash160
 	@$(BUILD)/test_int
 	@$(BUILD)/test_fieldmul
+	@$(BUILD)/test_groupadd52
 	@sh tests/run_tests.sh ./keyhunt
 	@sh tests/test_kangaroo.sh ./kangaroo
 	@./lcgfit s > /dev/null && echo "[ok]   lcgfit self test"

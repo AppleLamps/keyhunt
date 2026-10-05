@@ -29,6 +29,7 @@ email: albertobsd@gmail.com
 #include "hash/sha256.h"
 #include "hash/ripemd160.h"
 #include "hash/hash160_simd.h"
+#include "secp256k1/GroupAdd52.h"
 
 #if defined(_WIN64) && !defined(__CYGWIN__)
 #include "getopt.h"
@@ -3966,7 +3967,16 @@ void group_points_batch(Point &startP,Point *G,Int *dx,Point *pts,bool calculate
 	struct BetaVec { Int b[FM_CHUNK],b2[FM_CHUNK]; BetaVec() { for(int k = 0; k < FM_CHUNK; k++) { b[k].Set(&beta); b2[k].Set(&beta2); } } };
 	static BetaVec bv;	/* initialised on first use, after main() set beta/beta2 */
 	int hLength = CPU_GRP_SIZE / 2 - 1;
-	for(int i0 = 0; i0 < hLength; i0 += FM_CHUNK)	{
+	int i0 = 0;
+	/* With AVX-512 IFMA and no endomorphism the additions stay in radix 2^52
+	   limbs for whole chunks of 8 (GroupAdd52.cpp): same points, one limb
+	   conversion per chunk instead of one per multiply, lane parallel add/sub.
+	   The last hLength % 8 points go through the loop below. */
+	if(!endo_beta && groupadd52_available())	{
+		i0 = hLength & ~7;
+		groupadd52(startP,G,dx,&pts[CPU_GRP_SIZE / 2 + 1],&pts[CPU_GRP_SIZE / 2 - 1],i0,calculate_y);
+	}
+	for(; i0 < hLength; i0 += FM_CHUNK)	{
 		int cnt = hLength - i0 < FM_CHUNK ? hLength - i0 : FM_CHUNK;
 		int k,i;
 		for(k = 0; k < cnt; k++)	{
