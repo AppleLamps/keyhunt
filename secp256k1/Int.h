@@ -206,16 +206,20 @@ static uint64_t inline _umul128(uint64_t a, uint64_t b, uint64_t *h) {
     return rlo;
 }
 
+// The output is written by the movq before the shrd reads its last input, so
+// it must be an early clobber register ("=&r"): with a plain output constraint
+// the compiler may put b in the same register and the shift reads garbage
+// (seen with -flto, where Int::ModInv then never terminates).
 static uint64_t inline __shiftright128(uint64_t a, uint64_t b,unsigned char n) {
   uint64_t c;
-  __asm__ ("movq %1,%0;shrdq %3,%2,%0;" : "=D"(c) : "r"(a),"r"(b),"c"(n));
+  __asm__ ("movq %1,%0;shrdq %3,%2,%0;" : "=&r"(c) : "r"(a),"r"(b),"c"(n));
   return  c;
 }
 
 
 static uint64_t inline __shiftleft128(uint64_t a, uint64_t b,unsigned char n) {
   uint64_t c;
-  __asm__ ("movq %1,%0;shldq %3,%2,%0;" : "=D"(c) : "r"(b),"r"(a),"c"(n));
+  __asm__ ("movq %1,%0;shldq %3,%2,%0;" : "=&r"(c) : "r"(b),"r"(a),"c"(n));
   return  c;
 }
 
