@@ -145,74 +145,20 @@
 // schoolbook is 25 vpmadd52luq + 25 vpmadd52huq (each adds the low/high 52
 // bits of a 52x52 product to its accumulator), a column holds at most 10
 // such terms (< 2^56). Same exact reduction as the radix 2^29 kernel, with
-// K = 0x1000003D1 (33 bits) as a single multiplier.
+// K = 0x1000003D1 (33 bits) as a single multiplier. The limb arithmetic
+// lives in fe52_ifma.inl, shared with the group addition (GroupAdd52.cpp).
 
-#define IFMA_FN __attribute__((target("avx512f,avx512ifma")))
+#define FE52_FN __attribute__((target("avx512f,avx512ifma")))
+#include "fe52_ifma.inl"
 
-#define IFMA_NORMALIZE(C, n) do { \
-  for (int _k = 0; _k < (n); _k++) { \
-    C[_k + 1] = _mm512_add_epi64(C[_k + 1], _mm512_srli_epi64(C[_k], 52)); \
-    C[_k] = _mm512_and_si512(C[_k], M52); \
-  } \
-} while (0)
-
-#define IFMA_SPLIT52(L, W0, W1, W2, W3) do { \
-  L[0] = _mm512_and_si512(W0, M52); \
-  L[1] = _mm512_and_si512(_mm512_or_si512(_mm512_srli_epi64(W0, 52), _mm512_slli_epi64(W1, 12)), M52); \
-  L[2] = _mm512_and_si512(_mm512_or_si512(_mm512_srli_epi64(W1, 40), _mm512_slli_epi64(W2, 24)), M52); \
-  L[3] = _mm512_and_si512(_mm512_or_si512(_mm512_srli_epi64(W2, 28), _mm512_slli_epi64(W3, 36)), M52); \
-  L[4] = _mm512_srli_epi64(W3, 16); \
-} while (0)
-
-IFMA_FN static void fieldmul_ifma(Int *r, const Int *a, const Int *b) {
-  const __m512i M52 = _mm512_set1_epi64(0xFFFFFFFFFFFFFLL);
-  const __m512i M48 = _mm512_set1_epi64(0xFFFFFFFFFFFFLL);
-  const __m512i K = _mm512_set1_epi64(0x1000003D1LL);
-  __m512i A[5], B[5], C[11], H[5], S[7], W[4];
-
+FE52_FN static void fieldmul_ifma(Int *r, const Int *a, const Int *b) {
+  __m512i A[5], B[5], W[4];
   VLOAD4(W, a);
-  IFMA_SPLIT52(A, W[0], W[1], W[2], W[3]);
+  fe52_from_words(A, W);
   VLOAD4(W, b);
-  IFMA_SPLIT52(B, W[0], W[1], W[2], W[3]);
-
-  for (int k = 0; k < 11; k++) C[k] = _mm512_setzero_si512();
-#pragma GCC unroll 5
-  for (int i = 0; i < 5; i++) {
-#pragma GCC unroll 5
-    for (int j = 0; j < 5; j++) {
-      C[i + j] = _mm512_madd52lo_epu64(C[i + j], A[i], B[j]);
-      C[i + j + 1] = _mm512_madd52hi_epu64(C[i + j + 1], A[i], B[j]);
-    }
-  }
-  // Exact 512 bit product in 10 normalized limbs (C[9] < 2^44)
-  IFMA_NORMALIZE(C, 9);
-
-  // hi = product >> 256: bit 256 is bit 48 of limb 4
-  for (int j = 0; j < 5; j++)
-    H[j] = _mm512_and_si512(_mm512_or_si512(_mm512_srli_epi64(C[4 + j], 48), _mm512_slli_epi64(C[5 + j], 4)), M52);
-  // S = lo + hi*K  (< 2^290: 6 limbs)
-  for (int k = 0; k < 4; k++) S[k] = C[k];
-  S[4] = _mm512_and_si512(C[4], M48);
-  S[5] = _mm512_setzero_si512();
-  S[6] = _mm512_setzero_si512();
-  for (int k = 0; k < 5; k++) {
-    S[k] = _mm512_madd52lo_epu64(S[k], H[k], K);
-    S[k + 1] = _mm512_madd52hi_epu64(S[k + 1], H[k], K);
-  }
-  IFMA_NORMALIZE(S, 5);
-
-  // Second round: shi = S >> 256 (< 2^34), lo + shi*K, mod 2^256
-  __m512i shi = _mm512_or_si512(_mm512_srli_epi64(S[4], 48), _mm512_slli_epi64(S[5], 4));
-  S[4] = _mm512_and_si512(S[4], M48);
-  S[0] = _mm512_madd52lo_epu64(S[0], shi, K);
-  S[1] = _mm512_madd52hi_epu64(S[1], shi, K);
-  IFMA_NORMALIZE(S, 4);
-  S[4] = _mm512_and_si512(S[4], M48);   // drop the carry out of bit 256, like the scalar code
-
-  W[0] = _mm512_or_si512(S[0], _mm512_slli_epi64(S[1], 52));
-  W[1] = _mm512_or_si512(_mm512_srli_epi64(S[1], 12), _mm512_slli_epi64(S[2], 40));
-  W[2] = _mm512_or_si512(_mm512_srli_epi64(S[2], 24), _mm512_slli_epi64(S[3], 28));
-  W[3] = _mm512_or_si512(_mm512_srli_epi64(S[3], 36), _mm512_slli_epi64(S[4], 16));
+  fe52_from_words(B, W);
+  fe52_mul(A, A, B);
+  fe52_to_words(W, A);
   VSTORE4(r, W);
 }
 
