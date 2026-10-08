@@ -48,29 +48,14 @@
   } \
 } while (0)
 
-// r[0..LANES) = a[0..LANES) * b[0..LANES) mod p, as Int::ModMulK1 computes it
-KFN static void FM_FN(fieldmul)(Int *r, const Int *a, const Int *b) {
+// Normalize and reduce an exact product in 18 radix 2^29 limbs, then store it.
+// Keeping this common tail separate lets the squarer avoid the duplicate half
+// of the schoolbook product without duplicating the fairly subtle reduction.
+KFN static inline void FM_FN(reduce_store)(Int *r, VEC C[18]) {
   const VEC M29 = VSET1(0x1FFFFFFFULL);
   const VEC M24 = VSET1(0x00FFFFFFULL);
-  VEC A[9], B[9], C[18], S[11], H[9], W[4];
+  VEC S[11], H[9], W[4];
 
-  // Transpose the operands to lane parallel layout
-  VLOAD4(W, a);
-  FM_SPLIT29(A, W[0], W[1], W[2], W[3]);
-  VLOAD4(W, b);
-  FM_SPLIT29(B, W[0], W[1], W[2], W[3]);
-
-  // 9x9 schoolbook, column by column (one live accumulator: fewer spills on
-  // the 16 register AVX2 target): C[k] = sum A[i]*B[k-i]
-#pragma GCC unroll 17
-  for (int k = 0; k < 17; k++) {
-    VEC acc = VZERO();
-#pragma GCC unroll 9
-    for (int i = 0; i < 9; i++)
-      if (k - i >= 0 && k - i < 9) acc = VADD(acc, VMUL32(A[i], B[k - i]));
-    C[k] = acc;
-  }
-  C[17] = VZERO();
   // Exact 512 bit product in 18 normalized limbs (C[17] < 2^19)
   FM_NORMALIZE(C, 17);
 
@@ -105,6 +90,58 @@ KFN static void FM_FN(fieldmul)(Int *r, const Int *a, const Int *b) {
   W[2] = VOR(VOR(VSRL(S[4], 12), VSLL(S[5], 17)), VSLL(S[6], 46));
   W[3] = VOR(VOR(VSRL(S[6], 18), VSLL(S[7], 11)), VSLL(S[8], 40));
   VSTORE4(r, W);
+}
+
+// r[0..LANES) = a[0..LANES) * b[0..LANES) mod p, as Int::ModMulK1 computes it
+KFN static void FM_FN(fieldmul)(Int *r, const Int *a, const Int *b) {
+  const VEC M29 = VSET1(0x1FFFFFFFULL);
+  VEC A[9], B[9], C[18], W[4];
+
+  // Transpose the operands to lane parallel layout
+  VLOAD4(W, a);
+  FM_SPLIT29(A, W[0], W[1], W[2], W[3]);
+  VLOAD4(W, b);
+  FM_SPLIT29(B, W[0], W[1], W[2], W[3]);
+
+  // 9x9 schoolbook, column by column (one live accumulator: fewer spills on
+  // the 16 register AVX2 target): C[k] = sum A[i]*B[k-i]
+#pragma GCC unroll 17
+  for (int k = 0; k < 17; k++) {
+    VEC acc = VZERO();
+#pragma GCC unroll 9
+    for (int i = 0; i < 9; i++)
+      if (k - i >= 0 && k - i < 9) acc = VADD(acc, VMUL32(A[i], B[k - i]));
+    C[k] = acc;
+  }
+  C[17] = VZERO();
+  FM_FN(reduce_store)(r, C);
+}
+
+// r[0..LANES) = a[0..LANES)^2 mod p. Cross products occur twice, so compute
+// each only once and double it: 45 vector multiplies instead of the generic
+// multiply's 81. Accumulator bounds are unchanged from the full schoolbook.
+KFN static void FM_FN(fieldsqr)(Int *r, const Int *a) {
+  const VEC M29 = VSET1(0x1FFFFFFFULL);
+  VEC A[9], C[18], W[4];
+
+  VLOAD4(W, a);
+  FM_SPLIT29(A, W[0], W[1], W[2], W[3]);
+
+#pragma GCC unroll 17
+  for (int k = 0; k < 17; k++) {
+    VEC acc = VZERO();
+#pragma GCC unroll 9
+    for (int i = 0; i < 9; i++) {
+      int j = k - i;
+      if (j >= i && j < 9) {
+        VEC p = VMUL32(A[i], A[j]);
+        acc = VADD(acc, i == j ? p : VADD(p, p));
+      }
+    }
+    C[k] = acc;
+  }
+  C[17] = VZERO();
+  FM_FN(reduce_store)(r, C);
 }
 
 #undef FM_SPLIT29

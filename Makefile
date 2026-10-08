@@ -90,9 +90,12 @@ STAMP := $(BUILD)/.config
 CONFIG := $(CC) $(CXX) $(MAIN_CFLAGS) $(MAIN_CXXFLAGS) $(LDLIBS)
 $(shell mkdir -p $(BUILD); echo '$(CONFIG)' | cmp -s - $(STAMP) || echo '$(CONFIG)' > $(STAMP))
 
-.PHONY: default all clean legacy bsgsd keyhunt kangaroo lineage lcgfit test bench_fieldmul
+.PHONY: default all clean legacy bsgsd keyhunt kangaroo lineage lcgfit test bench_fieldmul tui
 default: all
 all: keyhunt
+
+tui: keyhunt
+	@python3 keyhunt_tui.py
 
 # The variants are linked under build/ and copied to the top level, so building
 # one after the other always refreshes ./keyhunt (it is the same output name).

@@ -62,9 +62,13 @@ Module.symvers
 Mkfile.old
 dkms.conf
 build*/
+.keyhunt-tui.json
+.keyhunt-puzzles/
+.keyhunt-cache/
 kangaroo
 lineage
 lcgfit
 novel/nonce_table.json
 novel/__pycache__/
+__pycache__/
 walletfit

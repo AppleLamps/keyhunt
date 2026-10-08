@@ -101,6 +101,51 @@ FE52_FN static inline void fe52_mul(__m512i R[5], const __m512i A[5], const __m5
   for (int k = 0; k < 5; k++) R[k] = S[k];
 }
 
+// R = A^2 mod p. Accumulate each cross product once and double the completed
+// columns, reducing the product from 50 to 30 vpmadd52 instructions. T cannot
+// overflow: a column has at most two cross terms, each below 2^52 per half.
+FE52_FN static inline void fe52_sqr(__m512i R[5], const __m512i A[5]) {
+  const __m512i M52 = _mm512_set1_epi64(FE52_M52);
+  const __m512i M48 = _mm512_set1_epi64(FE52_M48);
+  const __m512i K = _mm512_set1_epi64(FE52_K);
+  __m512i C[11], T[11], H[5], S[7];
+
+  for (int k = 0; k < 11; k++) C[k] = T[k] = _mm512_setzero_si512();
+#pragma GCC unroll 5
+  for (int i = 0; i < 5; i++) {
+    C[2 * i] = _mm512_madd52lo_epu64(C[2 * i], A[i], A[i]);
+    C[2 * i + 1] = _mm512_madd52hi_epu64(C[2 * i + 1], A[i], A[i]);
+#pragma GCC unroll 5
+    for (int j = i + 1; j < 5; j++) {
+      T[i + j] = _mm512_madd52lo_epu64(T[i + j], A[i], A[j]);
+      T[i + j + 1] = _mm512_madd52hi_epu64(T[i + j + 1], A[i], A[j]);
+    }
+  }
+  for (int k = 0; k < 11; k++) C[k] = _mm512_add_epi64(C[k], _mm512_add_epi64(T[k], T[k]));
+  FE52_NORMALIZE(C, 9);
+
+  for (int j = 0; j < 5; j++)
+    H[j] = _mm512_and_si512(_mm512_or_si512(_mm512_srli_epi64(C[4 + j], 48), _mm512_slli_epi64(C[5 + j], 4)), M52);
+  for (int k = 0; k < 4; k++) S[k] = C[k];
+  S[4] = _mm512_and_si512(C[4], M48);
+  S[5] = _mm512_setzero_si512();
+  S[6] = _mm512_setzero_si512();
+  for (int k = 0; k < 5; k++) {
+    S[k] = _mm512_madd52lo_epu64(S[k], H[k], K);
+    S[k + 1] = _mm512_madd52hi_epu64(S[k + 1], H[k], K);
+  }
+  FE52_NORMALIZE(S, 5);
+
+  __m512i shi = _mm512_or_si512(_mm512_srli_epi64(S[4], 48), _mm512_slli_epi64(S[5], 4));
+  S[4] = _mm512_and_si512(S[4], M48);
+  S[0] = _mm512_madd52lo_epu64(S[0], shi, K);
+  S[1] = _mm512_madd52hi_epu64(S[1], shi, K);
+  FE52_NORMALIZE(S, 4);
+  S[4] = _mm512_and_si512(S[4], M48);
+
+  for (int k = 0; k < 5; k++) R[k] = S[k];
+}
+
 // The field characteristic in 52 bit limbs
 FE52_FN static inline void fe52_set_p(__m512i P[5]) {
   P[0] = _mm512_set1_epi64((long long)(0x10000000000000LL - FE52_K));   // 2^52 - K

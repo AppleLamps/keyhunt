@@ -1,5 +1,7 @@
 // Microbenchmark: nanoseconds per secp256k1 field multiply / square for the
 // scalar Int::ModMulK1 / ModSquareK1 and every batched kernel this CPU runs.
+// The SIMD squarers use symmetry and are intentionally benchmarked separately
+// from multiplication rather than calling the multiply kernel with a == b.
 // Usage: bench_fieldmul [batch=1024] [repeat=20000]
 #include <stdio.h>
 #include <stdint.h>

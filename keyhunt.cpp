@@ -124,6 +124,7 @@ char *Ccoinbuffer = (char*) Ccoinbuffer_default;
 char *str_baseminikey = NULL;
 char *raw_baseminikey = NULL;
 char *minikeyN = NULL;
+char *bsgs_cache_dir = NULL;
 int minikey_n_limit;
 	
 const char *version = "0.2.230519 Satoshi Quest";
@@ -354,6 +355,21 @@ char buffer_bloom_file[1024];
 struct bsgs_xvalue *bPtable;
 struct address_value *addressTable;
 
+static void bsgs_cache_path(char *destination,size_t destination_size,
+		const char *pattern,uint64_t value) {
+	char filename[256];
+	snprintf(filename,sizeof(filename),pattern,value);
+	if(bsgs_cache_dir != NULL && bsgs_cache_dir[0] != '\0') {
+		size_t length = strlen(bsgs_cache_dir);
+		const char *separator = (length > 0 &&
+			(bsgs_cache_dir[length-1] == '/' || bsgs_cache_dir[length-1] == '\\')) ? "" : "/";
+		snprintf(destination,destination_size,"%s%s%s",bsgs_cache_dir,separator,filename);
+	}
+	else {
+		snprintf(destination,destination_size,"%s",filename);
+	}
+}
+
 /* Distinct targets of address, rmd160, xpoint and minikeys mode already found,
    once all of them are found there is nothing left to search and the program ends */
 uint8_t *targets_found = NULL;
@@ -515,7 +531,7 @@ int main(int argc, char **argv)	{
 	
 	printf("[+] Version %s, developed by AlbertoBSD\n",version);
 
-	while ((c = getopt(argc, argv, "dehF6LMqRSB:b:c:C:E:f:I:k:l:m:N:n:p:r:s:t:v:G:8:z:")) != -1) {
+	while ((c = getopt(argc, argv, "dehF6LMqRSB:b:c:C:E:f:I:k:l:m:N:n:o:p:r:s:t:v:G:8:z:")) != -1) {
 		switch(c) {
 			case 'h':
 				menu();
@@ -699,6 +715,10 @@ int main(int argc, char **argv)	{
 			case 'n':
 				FLAG_N = 1;
 				str_N = optarg;
+			break;
+			case 'o':
+				bsgs_cache_dir = optarg;
+				printf("[+] BSGS cache directory: %s\n",bsgs_cache_dir);
 			break;
 			case 'q':
 				FLAGQUIET	= 1;
@@ -1431,7 +1451,7 @@ int main(int argc, char **argv)	{
 		if(FLAGSAVEREADFILE)	{
 			/*Reading file for 1st bloom filter */
 
-			snprintf(buffer_bloom_file,1024,FLAGBSGSCOMPACT ? "keyhunt_bsgs_4c_%" PRIu64 ".blm" : "keyhunt_bsgs_4_%" PRIu64 ".blm",bsgs_m);
+			bsgs_cache_path(buffer_bloom_file,sizeof(buffer_bloom_file),FLAGBSGSCOMPACT ? "keyhunt_bsgs_4c_%" PRIu64 ".blm" : "keyhunt_bsgs_4_%" PRIu64 ".blm",bsgs_m);
 			fd_aux1 = fopen(buffer_bloom_file,"rb");
 			if(fd_aux1 != NULL)	{
 				printf("[+] Reading bloom filter from file %s ",buffer_bloom_file);
@@ -1469,7 +1489,7 @@ int main(int argc, char **argv)	{
 				printf(" Done!\n");
 				fclose(fd_aux1);
 				memset(buffer_bloom_file,0,1024);
-				snprintf(buffer_bloom_file,1024,"keyhunt_bsgs_3_%" PRIu64 ".blm",bsgs_m);
+				bsgs_cache_path(buffer_bloom_file,sizeof(buffer_bloom_file),"keyhunt_bsgs_3_%" PRIu64 ".blm",bsgs_m);
 				fd_aux1 = fopen(buffer_bloom_file,"rb");
 				if(fd_aux1 != NULL)	{
 					printf("[W] Unused file detected %s you can delete it without worry\n",buffer_bloom_file);
@@ -1478,7 +1498,7 @@ int main(int argc, char **argv)	{
 				FLAGREADEDFILE1 = 1;
 			}
 			else if(!FLAGBSGSCOMPACT)	{	/*Checking for old file    keyhunt_bsgs_3_ (made with the default rate)  */
-				snprintf(buffer_bloom_file,1024,"keyhunt_bsgs_3_%" PRIu64 ".blm",bsgs_m);
+				bsgs_cache_path(buffer_bloom_file,sizeof(buffer_bloom_file),"keyhunt_bsgs_3_%" PRIu64 ".blm",bsgs_m);
 				fd_aux1 = fopen(buffer_bloom_file,"rb");
 				if(fd_aux1 != NULL)	{
 					printf("[+] Reading bloom filter from file %s ",buffer_bloom_file);
@@ -1534,7 +1554,7 @@ int main(int argc, char **argv)	{
 			}
 			
 			/*Reading file for 2nd bloom filter */
-			snprintf(buffer_bloom_file,1024,"keyhunt_bsgs_6_%" PRIu64 ".blm",bsgs_m2);
+			bsgs_cache_path(buffer_bloom_file,sizeof(buffer_bloom_file),"keyhunt_bsgs_6_%" PRIu64 ".blm",bsgs_m2);
 			fd_aux2 = fopen(buffer_bloom_file,"rb");
 			if(fd_aux2 != NULL)	{
 				printf("[+] Reading bloom filter from file %s ",buffer_bloom_file);
@@ -1573,14 +1593,14 @@ int main(int argc, char **argv)	{
 				fclose(fd_aux2);
 				printf(" Done!\n");
 				memset(buffer_bloom_file,0,1024);
-				snprintf(buffer_bloom_file,1024,"keyhunt_bsgs_5_%" PRIu64 ".blm",bsgs_m2);
+				bsgs_cache_path(buffer_bloom_file,sizeof(buffer_bloom_file),"keyhunt_bsgs_5_%" PRIu64 ".blm",bsgs_m2);
 				fd_aux2 = fopen(buffer_bloom_file,"rb");
 				if(fd_aux2 != NULL)	{
 					printf("[W] Unused file detected %s you can delete it without worry\n",buffer_bloom_file);
 					fclose(fd_aux2);
 				}
 				memset(buffer_bloom_file,0,1024);
-				snprintf(buffer_bloom_file,1024,"keyhunt_bsgs_1_%" PRIu64 ".blm",bsgs_m2);
+				bsgs_cache_path(buffer_bloom_file,sizeof(buffer_bloom_file),"keyhunt_bsgs_1_%" PRIu64 ".blm",bsgs_m2);
 				fd_aux2 = fopen(buffer_bloom_file,"rb");
 				if(fd_aux2 != NULL)	{
 					printf("[W] Unused file detected %s you can delete it without worry\n",buffer_bloom_file);
@@ -1593,7 +1613,7 @@ int main(int argc, char **argv)	{
 			}
 			
 			/*Reading file for bPtable */
-			snprintf(buffer_bloom_file,1024,"keyhunt_bsgs_2_%" PRIu64 ".tbl",bsgs_m3);
+			bsgs_cache_path(buffer_bloom_file,sizeof(buffer_bloom_file),"keyhunt_bsgs_2_%" PRIu64 ".tbl",bsgs_m3);
 			fd_aux3 = fopen(buffer_bloom_file,"rb");
 			if(fd_aux3 != NULL)	{
 				printf("[+] Reading bP Table from file %s .",buffer_bloom_file);
@@ -1624,7 +1644,7 @@ int main(int argc, char **argv)	{
 			}
 			
 			/*Reading file for 3rd bloom filter */
-			snprintf(buffer_bloom_file,1024,"keyhunt_bsgs_7_%" PRIu64 ".blm",bsgs_m3);
+			bsgs_cache_path(buffer_bloom_file,sizeof(buffer_bloom_file),"keyhunt_bsgs_7_%" PRIu64 ".blm",bsgs_m3);
 			fd_aux2 = fopen(buffer_bloom_file,"rb");
 			if(fd_aux2 != NULL)	{
 				printf("[+] Reading bloom filter from file %s ",buffer_bloom_file);
@@ -1938,7 +1958,7 @@ int main(int argc, char **argv)	{
 		}
 		if(FLAGSAVEREADFILE || FLAGUPDATEFILE1 )	{
 			if(!FLAGREADEDFILE1 || FLAGUPDATEFILE1)	{
-				snprintf(buffer_bloom_file,1024,FLAGBSGSCOMPACT ? "keyhunt_bsgs_4c_%" PRIu64 ".blm" : "keyhunt_bsgs_4_%" PRIu64 ".blm",bsgs_m);
+				bsgs_cache_path(buffer_bloom_file,sizeof(buffer_bloom_file),FLAGBSGSCOMPACT ? "keyhunt_bsgs_4c_%" PRIu64 ".blm" : "keyhunt_bsgs_4_%" PRIu64 ".blm",bsgs_m);
 				
 				if(FLAGUPDATEFILE1)	{
 					printf("[W] Updating old file into a new one\n");
@@ -1981,7 +2001,7 @@ int main(int argc, char **argv)	{
 			}
 			if(!FLAGREADEDFILE2  )	{
 				
-				snprintf(buffer_bloom_file,1024,"keyhunt_bsgs_6_%" PRIu64 ".blm",bsgs_m2);
+				bsgs_cache_path(buffer_bloom_file,sizeof(buffer_bloom_file),"keyhunt_bsgs_6_%" PRIu64 ".blm",bsgs_m2);
 								
 				/* Writing file for 2nd bloom filter */
 				fd_aux2 = fopen(buffer_bloom_file,"wb");
@@ -2020,7 +2040,7 @@ int main(int argc, char **argv)	{
 			
 			if(!FLAGREADEDFILE3)	{
 				/* Writing file for bPtable */
-				snprintf(buffer_bloom_file,1024,"keyhunt_bsgs_2_%" PRIu64 ".tbl",bsgs_m3);
+				bsgs_cache_path(buffer_bloom_file,sizeof(buffer_bloom_file),"keyhunt_bsgs_2_%" PRIu64 ".tbl",bsgs_m3);
 				fd_aux3 = fopen(buffer_bloom_file,"wb");
 				if(fd_aux3 != NULL)	{
 					printf("[+] Writing bP Table to file %s .. ",buffer_bloom_file);
@@ -2044,7 +2064,7 @@ int main(int argc, char **argv)	{
 				}
 			}
 			if(!FLAGREADEDFILE4)	{
-				snprintf(buffer_bloom_file,1024,"keyhunt_bsgs_7_%" PRIu64 ".blm",bsgs_m3);
+				bsgs_cache_path(buffer_bloom_file,sizeof(buffer_bloom_file),"keyhunt_bsgs_7_%" PRIu64 ".blm",bsgs_m3);
 								
 				/* Writing file for 3rd bloom filter */
 				fd_aux2 = fopen(buffer_bloom_file,"wb");
@@ -2632,11 +2652,20 @@ void *thread_process(void *vargp)	{
 	char hash160_simd_c[16][20];
 	char hash160_simd_u[16][20];
 	char hash160_simd_endo[12][16][20];
-	Int key_mpz,keyfound,temp_stride;
+	Int key_mpz,keyfound,temp_stride,key_step4,key_step_simd,key_step_endo;
 	tt = (struct tothread *)vargp;
 	thread_number = tt->nt;
 	free(tt);
 	grp->Set(dx);
+	/* The stride and SIMD lane counts do not change during a worker's life.
+	   Computing these products in every 4/8/16-key hash batch used the full
+	   multi-precision multiplier hundreds of times per point group. */
+	key_step4.SetInt32(4);
+	key_step4.Mult(&stride);
+	key_step_simd.SetInt32(simd_lanes);
+	key_step_simd.Mult(&stride);
+	key_step_endo.SetInt32(endo_lanes);
+	key_step_endo.Mult(&stride);
 			
 	do {
 		if(FLAGRANDOM){
@@ -2790,9 +2819,7 @@ void *thread_process(void *vargp)	{
 							}
 						}
 						count += simd_lanes;
-						temp_stride.SetInt32(simd_lanes);
-						temp_stride.Mult(&stride);
-						key_mpz.Add(&temp_stride);
+						key_mpz.Add(&key_step_simd);
 					}
 				}
 				if(endo_lanes)	{
@@ -2813,9 +2840,7 @@ void *thread_process(void *vargp)	{
 							}
 						}
 						count += endo_lanes;
-						temp_stride.SetInt32(endo_lanes);
-						temp_stride.Mult(&stride);
-						key_mpz.Add(&temp_stride);
+						key_mpz.Add(&key_step_endo);
 					}
 				}
 				for(; j < CPU_GRP_SIZE/4;j++){
@@ -3160,9 +3185,7 @@ void *thread_process(void *vargp)	{
 						break;
 					}
 					count+=4;
-					temp_stride.SetInt32(4);
-					temp_stride.Mult(&stride);
-					key_mpz.Add(&temp_stride);
+					key_mpz.Add(&key_step4);
 				}
 				/*
 				if(FLAGDEBUG) {
@@ -5297,12 +5320,13 @@ void menu() {
 	printf("-L          Sequential (linear) search: scan the range from its start upwards instead of random bases\n");
 	printf("-n number   Check for N sequential numbers before the random chosen, random mode only\n");
 	printf("            Use -n to set the N for the BSGS process. Bigger N more RAM needed\n");
+	printf("-o dir      Directory for BSGS .blm and .tbl cache files (default: current directory)\n");
 	printf("-q          Quiet the thread output\n");
 	printf("-r SR:EN    StarRange:EndRange, the end range can be omitted for search from start range to N-1 ECC value\n");
 	printf("-R          Random search inside the range, this is the default behavior (see -L)\n");
 	printf("-s ns       Number of seconds for the stats output, 0 to omit output.\n");
 	printf("-S          S is for SAVING in files BSGS data (Bloom filters and bPtable)\n");
-	printf("-6          to skip sha256 Checksum on data files");
+	printf("-6          Skip SHA-256 checksums when loading saved data files\n");
 	printf("-t tn       Threads number, must be a positive integer\n");
 	printf("-v value    Search for vanity Address, only with -m vanity\n");
 	printf("-z value    Bloom size multiplier, only address,rmd160,vanity, xpoint, value >= 1\n");

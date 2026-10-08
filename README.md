@@ -107,6 +107,22 @@ Build options, set on the command line (`make ARCH=x86-64-v3`):
 
 Objects live in `build/`, builds are incremental, and changing any option rebuilds what it affects. `make legacy` and `make` both produce `./keyhunt`; whichever you ran last is the one you have.
 
+## Terminal UI
+
+Run the interactive CPU launcher from a Linux terminal or WSL:
+
+```sh
+make tui
+```
+
+The TUI includes presets for Bitcoin puzzles 1 through 160, sourced from `puzzle-all.xlsx`. Selecting a puzzle creates its one-target input under `.keyhunt-puzzles/` and fills in a machine-tuned configuration. Puzzles with a known public key use BSGS with `-n`, `-k`, compact-filter, caching, and thread settings sized for the available CPU and RAM. Address-only puzzles use the compressed hash160 path without endomorphism, because endomorphism does not help a bounded puzzle range. Select `manual` to configure a non-puzzle run.
+
+It also shows the exact command before it runs, remembers settings in `.keyhunt-tui.json`, and displays live speed reports and hits. A found private key is pinned at the top as the complete zero-padded 64-digit hexadecimal value, and long output lines wrap instead of being clipped. Use the arrow keys to navigate, Enter to type a puzzle number or edit a value, Left/Right or Space to step through selections, `R` to run, and `q` to stop a running search. Press `B` inside the TUI to rebuild Keyhunt.
+
+On WSL, BSGS presets save their large `.blm` and `.tbl` cache files under `/mnt/d/keyhunt-cache` (`D:\keyhunt-cache`) by default. Edit **BSGS cache directory** in the TUI to use another disk or folder.
+
+It uses only the Python standard library. For scripting or troubleshooting, `python3 keyhunt_tui.py --print-command` prints the configured command without opening the interface.
+
 ## Command line reference
 
 ```
@@ -351,7 +367,7 @@ Example for the 63 bit puzzle (the original author measured about four minutes o
 
 #### Saving the tables
 
-Building the tables is the slow part of the start up. `-S` writes them (three bloom filters and the baby step table) to the current directory the first time and reads them on later runs. The files are the same size as the memory they use, and their names depend on `-n` and `-k`, for example `keyhunt_bsgs_4_4194304.blm` and `keyhunt_bsgs_2_4096.tbl`, so stick to one combination or you will collect many files. `-6` skips the SHA-256 check of the files on load.
+Building the tables is the slow part of the start up. `-S` writes them (three bloom filters and the baby step table) to the current directory the first time and reads them on later runs. Add `-o /path/to/cache` to keep all BSGS `.blm` and `.tbl` files in another directory; create that directory first. The files are the same size as the memory they use, and their names depend on `-n` and `-k`, for example `keyhunt_bsgs_4_4194304.blm` and `keyhunt_bsgs_2_4096.tbl`, so stick to one combination or you will collect many files. `-6` skips the SHA-256 check of the files on load.
 
 For the address, rmd160, minikeys and xpoint modes `-S` writes a single `data_<id>.dat` file with the bloom filter and sorted table of the input file.
 

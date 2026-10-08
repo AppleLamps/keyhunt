@@ -162,6 +162,15 @@ FE52_FN static void fieldmul_ifma(Int *r, const Int *a, const Int *b) {
   VSTORE4(r, W);
 }
 
+FE52_FN static void fieldsqr_ifma(Int *r, const Int *a) {
+  __m512i A[5], W[4];
+  VLOAD4(W, a);
+  fe52_from_words(A, W);
+  fe52_sqr(A, A);
+  fe52_to_words(W, A);
+  VSTORE4(r, W);
+}
+
 static bool cpu_has(FieldMulKernel k) {
   switch (k) {
     case FIELDMUL_AVX2:       return __builtin_cpu_supports("avx2");
@@ -179,10 +188,19 @@ static void run_kernel(FieldMulKernel k, Int *r, const Int *a, const Int *b) {
   }
 }
 
+static void run_square_kernel(FieldMulKernel k, Int *r, const Int *a) {
+  switch (k) {
+    case FIELDMUL_AVX512IFMA: fieldsqr_ifma(r, a); break;
+    case FIELDMUL_AVX512F:    fieldsqr_avx512f(r, a); break;
+    default:                  fieldsqr_avx2(r, a); break;
+  }
+}
+
 #else  // not x86
 
 static bool cpu_has(FieldMulKernel k) { return k == FIELDMUL_SCALAR; }
 static void run_kernel(FieldMulKernel, Int *, const Int *, const Int *) {}
+static void run_square_kernel(FieldMulKernel, Int *, const Int *) {}
 
 #endif
 
@@ -235,11 +253,10 @@ void fieldmul_batch_with(FieldMulKernel k, Int *r, const Int *a, const Int *b, i
 }
 
 void fieldsqr_batch_with(FieldMulKernel k, Int *r, const Int *a, int n) {
-  // ModSquareK1 and ModMulK1(a,a) are the same function of the exact product
   int i = 0;
   int lanes = kernel_lanes[k];
   if (lanes) {
-    for (; i + lanes <= n; i += lanes) run_kernel(k, r + i, a + i, a + i);
+    for (; i + lanes <= n; i += lanes) run_square_kernel(k, r + i, a + i);
   }
   for (; i < n; i++) r[i].ModSquareK1((Int *)&a[i]);
 }

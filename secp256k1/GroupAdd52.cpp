@@ -53,8 +53,8 @@ FE52_FN static void groupadd52_ifma(const Point &startP, const Point *G, const I
     fe52_add(dyn, Gy, Py, P);
     fe52_mul(sp, dy, Dx);
     fe52_mul(sn, dyn, Dx);
-    fe52_mul(tp, sp, sp);
-    fe52_mul(tn, sn, sn);
+    fe52_sqr(tp, sp);
+    fe52_sqr(tn, sn);
     fe52_sub(rxp, tp, Px, P);
     fe52_sub(rxp, rxp, Gx, P);
     fe52_sub(rxn, tn, Px, P);
