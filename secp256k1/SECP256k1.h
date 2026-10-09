@@ -64,6 +64,9 @@ public:
   // prefix follows y parity), GetHash160_fromX_N hashes the compressed form of
   // k[i].x with the given prefix.
   void GetHash160_N(int lanes, bool compressed, Point *k, uint8_t *const *h);
+  // Same input, but only writes digests whose first 8 bytes match prefix.
+  // Returns the candidate lane mask; callers must check the complete digest.
+  uint32_t GetHash160_N_Prefix(int lanes, bool compressed, Point *k, uint64_t prefix, uint8_t *const *h);
   void GetHash160_fromX_N(int lanes, unsigned char prefix, Point *k, uint8_t *const *h);
 
   Point Add(Point &p1, Point &p2);

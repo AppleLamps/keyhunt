@@ -842,6 +842,18 @@ void Secp256K1::GetHash160_N(int lanes, bool compressed, Point *k, uint8_t *cons
   }
 }
 
+uint32_t Secp256K1::GetHash160_N_Prefix(int lanes, bool compressed, Point *k, uint64_t prefix, uint8_t *const *h) {
+  uint32_t w[32 * HASH160_AVX512_LANES];
+  if (compressed) {
+    for (int l = 0; l < lanes; l++)
+      lane_words_comp(w, lanes, l, k[l].x, 0x02 + k[l].y.IsOdd());
+    return hash160_simd_1B_prefix(lanes, w, prefix, h);
+  }
+  for (int l = 0; l < lanes; l++)
+    lane_words_uncomp(w, lanes, l, k[l]);
+  return hash160_simd_2B_prefix(lanes, w, prefix, h);
+}
+
 void Secp256K1::GetHash160_fromX_N(int lanes, unsigned char prefix, Point *k, uint8_t *const *h) {
   uint32_t w[16 * HASH160_AVX512_LANES];
   for (int l = 0; l < lanes; l++)

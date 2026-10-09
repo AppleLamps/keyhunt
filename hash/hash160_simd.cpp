@@ -32,6 +32,7 @@
 #define VZERO()        _mm256_setzero_si256()
 #define VLOAD(p)       _mm256_loadu_si256((const __m256i *)(p))
 #define VSTORE(p, v)   _mm256_storeu_si256((__m256i *)(p), v)
+#define VEQMASK(a, b)  ((uint32_t)_mm256_movemask_ps(_mm256_castsi256_ps(_mm256_cmpeq_epi32(a, b))))
 #define VROR(x, n)     VOR(_mm256_srli_epi32(x, n), _mm256_slli_epi32(x, 32 - (n)))
 #define VROL(x, n)     VOR(_mm256_slli_epi32(x, n), _mm256_srli_epi32(x, 32 - (n)))
 #define VNOT(x)        VXOR(x, VSET1(-1))
@@ -61,6 +62,7 @@
 #undef VZERO
 #undef VLOAD
 #undef VSTORE
+#undef VEQMASK
 #undef VROR
 #undef VROL
 #undef VNOT
@@ -91,6 +93,7 @@
 #define VZERO()        _mm512_setzero_si512()
 #define VLOAD(p)       _mm512_loadu_si512((const void *)(p))
 #define VSTORE(p, v)   _mm512_storeu_si512((void *)(p), v)
+#define VEQMASK(a, b)  ((uint32_t)_mm512_cmpeq_epi32_mask(a, b))
 #define VROR(x, n)     _mm512_ror_epi32(x, n)
 #define VROL(x, n)     _mm512_rol_epi32(x, n)
 // vpternlogd immediates: bit (a<<2 | b<<1 | c) of the immediate is f(a,b,c)
@@ -117,9 +120,13 @@ bool hash160_avx512_available() {
 bool hash160_avx2_available() { return false; }
 void hash160_avx2_1B(const uint32_t *, uint8_t *const[8]) {}
 void hash160_avx2_2B(const uint32_t *, uint8_t *const[8]) {}
+uint32_t hash160_avx2_1B_prefix(const uint32_t *, uint64_t, uint8_t *const[8]) { return 0; }
+uint32_t hash160_avx2_2B_prefix(const uint32_t *, uint64_t, uint8_t *const[8]) { return 0; }
 bool hash160_avx512_available() { return false; }
 void hash160_avx512_1B(const uint32_t *, uint8_t *const[16]) {}
 void hash160_avx512_2B(const uint32_t *, uint8_t *const[16]) {}
+uint32_t hash160_avx512_1B_prefix(const uint32_t *, uint64_t, uint8_t *const[16]) { return 0; }
+uint32_t hash160_avx512_2B_prefix(const uint32_t *, uint64_t, uint8_t *const[16]) { return 0; }
 
 #endif
 
@@ -145,4 +152,14 @@ void hash160_simd_1B(int lanes, const uint32_t *w, uint8_t *const *out) {
 void hash160_simd_2B(int lanes, const uint32_t *w, uint8_t *const *out) {
   if (lanes == 16) hash160_avx512_2B(w, out);
   else hash160_avx2_2B(w, out);
+}
+
+uint32_t hash160_simd_1B_prefix(int lanes, const uint32_t *w, uint64_t prefix, uint8_t *const *out) {
+  if (lanes == 16) return hash160_avx512_1B_prefix(w, prefix, out);
+  return hash160_avx2_1B_prefix(w, prefix, out);
+}
+
+uint32_t hash160_simd_2B_prefix(int lanes, const uint32_t *w, uint64_t prefix, uint8_t *const *out) {
+  if (lanes == 16) return hash160_avx512_2B_prefix(w, prefix, out);
+  return hash160_avx2_2B_prefix(w, prefix, out);
 }

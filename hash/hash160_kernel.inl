@@ -11,6 +11,7 @@
  *   VCH(e,f,g)=(e&f)^(~e&g)  VMAJ(a,b,c)  VXOR3(a,b,c)
  *   VF3(x,y,z)=(x|~y)^z  VF4(x,y,z)=(x&z)|(y&~z)  VF5(x,y,z)=x^(y|~z)
  *   VBSWAP(x)    byte swap every 32 bit lane
+ *   VEQMASK(a,b) one bit per equal 32 bit lane
  *
  * Derived from the 4-way SSE kernels (hash/sha256_sse.cpp, hash/ripemd160_sse.cpp,
  * VanitySearch, Copyright (c) 2019 Jean Luc PONS, GPLv3). The SHA256 digest is
@@ -189,8 +190,10 @@ KFN static inline void KNAME(_sha256_init)(VEC *s) {
 
 // RIPEMD160 of the 32 byte SHA256 digest held in the lane parallel state
 // sha[0..7] (big endian words). Result in out[0..4]: the little endian words
-// of the 20 byte digest.
-KFN static inline void KNAME(_ripemd160_of_sha)(const VEC *sha, VEC *out) {
+// of the 20 byte digest. Filter=true compares the first two result words in
+// registers and returns a candidate mask; a zero mask leaves out untouched.
+template <bool Filter = false>
+KFN static inline uint32_t KNAME(_ripemd160_of_sha)(const VEC *sha, VEC *out, uint64_t prefix = 0) {
   VEC w[16];
   for (int i = 0; i < 8; i++)
     w[i] = VBSWAP(sha[i]);
@@ -373,11 +376,20 @@ KFN static inline void KNAME(_ripemd160_of_sha)(const VEC *sha, VEC *out) {
     R51(b1, c1, d1, e1, a1, w[13], 6);
     R52(b2, c2, d2, e2, a2, w[11], 11);
 
-  out[0] = add3(s1, c1, d2);
-  out[1] = add3(s2, d1, e2);
+  VEC h0 = add3(s1, c1, d2);
+  VEC h1 = add3(s2, d1, e2);
+  uint32_t mask = (1u << LANES) - 1;
+  if (Filter) {
+    mask = VEQMASK(h0, VSET1((uint32_t)prefix)) &
+           VEQMASK(h1, VSET1((uint32_t)(prefix >> 32)));
+    if (!mask) return 0;
+  }
+  out[0] = h0;
+  out[1] = h1;
   out[2] = add3(s3, e1, a2);
   out[3] = add3(s4, a1, b2);
   out[4] = add3(s0, b1, c2);
+  return mask;
 }
 
 #undef RRound
@@ -405,6 +417,17 @@ KFN static inline void KNAME(_store_digests)(const VEC *h, uint8_t *const *out) 
   }
 }
 
+// The RIPEMD kernel has already rejected nonmatching lanes in registers.
+KFN static inline void KNAME(_store_masked_digests)(const VEC *h, uint32_t mask, uint8_t *const *out) {
+  uint32_t t[5][LANES];
+  for (int i = 0; i < 5; i++) VSTORE(t[i], h[i]);
+  for (uint32_t pending = mask; pending; pending &= pending - 1) {
+    int l = __builtin_ctz(pending);
+    uint32_t d[5] = { t[0][l], t[1][l], t[2][l], t[3][l], t[4][l] };
+    memcpy(out[l], d, 20);
+  }
+}
+
 } // namespace
 
 KFN void KNAME(_1B)(const uint32_t *w, uint8_t *const out[LANES]) {
@@ -422,6 +445,25 @@ KFN void KNAME(_2B)(const uint32_t *w, uint8_t *const out[LANES]) {
   KNAME(_sha256_block)(s, w + 16 * LANES);
   KNAME(_ripemd160_of_sha)(s, h);
   KNAME(_store_digests)(h, out);
+}
+
+KFN uint32_t KNAME(_1B_prefix)(const uint32_t *w, uint64_t prefix, uint8_t *const out[LANES]) {
+  VEC s[8], h[5];
+  KNAME(_sha256_init)(s);
+  KNAME(_sha256_block)(s, w);
+  uint32_t mask = KNAME(_ripemd160_of_sha)<true>(s, h, prefix);
+  if (mask) KNAME(_store_masked_digests)(h, mask, out);
+  return mask;
+}
+
+KFN uint32_t KNAME(_2B_prefix)(const uint32_t *w, uint64_t prefix, uint8_t *const out[LANES]) {
+  VEC s[8], h[5];
+  KNAME(_sha256_init)(s);
+  KNAME(_sha256_block)(s, w);
+  KNAME(_sha256_block)(s, w + 16 * LANES);
+  uint32_t mask = KNAME(_ripemd160_of_sha)<true>(s, h, prefix);
+  if (mask) KNAME(_store_masked_digests)(h, mask, out);
+  return mask;
 }
 
 #undef KCAT_

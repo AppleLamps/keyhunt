@@ -75,6 +75,7 @@ Keyhunt is developed on Linux. On Windows use [WSL](https://learn.microsoft.com/
 
 - a C and C++ compiler with C++17 support (GCC or Clang) and `make`
 - an x86-64 CPU with SSSE3 for the main build; with AVX2 or AVX-512, address and rmd160 mode (without `-e`, Bitcoin) use an 8-way or 16-way hash path, chosen at run time, so the same binary still runs on older CPUs. `KEYHUNT_SIMD=avx2` (or `none`) in the environment forces a narrower path, for CPUs where AVX-512 lowers the clock too much
+- single-target Bitcoin address/rmd160 scans without `-e` compare the first eight hash bytes inside the AVX2/AVX-512 kernel. Only candidate lanes write a digest, and the worker confirms all 20 bytes before reporting a hit. This applies to compressed and uncompressed keys
 - with AVX-512 IFMA (Ice Lake, Zen 4 and later), AVX-512 or AVX2, the secp256k1 field multiplications of the point additions run 8 or 4 at a time in a lane parallel kernel, also chosen at run time. `KEYHUNT_FIELD_SIMD=ifma|avx512|avx2|none` forces one (the AVX2 one is about break even with the scalar code). With IFMA the whole point addition of a group (multiplies, squares, modular add/sub) runs 8 points at a time in radix 2^52 limbs
 - `libssl-dev` and `libgmp-dev` only for the `legacy` build
 
@@ -106,6 +107,22 @@ Build options, set on the command line (`make ARCH=x86-64-v3`):
 | `V=1` | print the full compiler command lines |
 
 Objects live in `build/`, builds are incremental, and changing any option rebuilds what it affects. `make legacy` and `make` both produce `./keyhunt`; whichever you ran last is the one you have.
+
+To measure sequential compressed single-target scanning on Linux/WSL:
+
+```sh
+python3 tests/bench_scan.py current=./keyhunt
+# Compare saved binaries built with the same compiler and flags:
+python3 tests/bench_scan.py before=/path/to/old/keyhunt after=./keyhunt
+```
+
+The benchmark fixes hash SIMD to AVX2 and compares `KEYHUNT_FIELD_SIMD=none|avx2`
+with six and twelve threads. It uses an absent synthetic target in the puzzle-71
+range, runs in a temporary directory, and saves raw counters and commands to
+`build/bench-scan.json`. By default each configuration runs three times for 20
+seconds, excluding the first three seconds from the measured counter interval.
+The counter advances in batches, so use longer runs to resolve small differences.
+Keep other CPU workloads idle while measuring; these choices depend on the CPU.
 
 ## Terminal UI
 

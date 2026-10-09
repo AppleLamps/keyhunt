@@ -22,15 +22,26 @@
 bool hash160_avx2_available();
 void hash160_avx2_1B(const uint32_t *w, uint8_t *const out[8]);
 void hash160_avx2_2B(const uint32_t *w, uint8_t *const out[8]);
+uint32_t hash160_avx2_1B_prefix(const uint32_t *w, uint64_t prefix, uint8_t *const out[8]);
+uint32_t hash160_avx2_2B_prefix(const uint32_t *w, uint64_t prefix, uint8_t *const out[8]);
 
 bool hash160_avx512_available();
 void hash160_avx512_1B(const uint32_t *w, uint8_t *const out[16]);
 void hash160_avx512_2B(const uint32_t *w, uint8_t *const out[16]);
+uint32_t hash160_avx512_1B_prefix(const uint32_t *w, uint64_t prefix, uint8_t *const out[16]);
+uint32_t hash160_avx512_2B_prefix(const uint32_t *w, uint64_t prefix, uint8_t *const out[16]);
 
 // Widest kernel this CPU supports: 16, 8 or 0 (none).
 int hash160_simd_lanes();
 // Dispatch on the lane count returned by hash160_simd_lanes().
 void hash160_simd_1B(int lanes, const uint32_t *w, uint8_t *const *out);
 void hash160_simd_2B(int lanes, const uint32_t *w, uint8_t *const *out);
+
+// Prefix-filtered variants: prefix is the first 8 digest bytes interpreted as
+// a little endian integer. Bit l of the returned mask means lane l matches.
+// Only matching lanes have their full digest written to out[l]; all other
+// outputs are untouched. Callers MUST confirm candidates against all 20 bytes.
+uint32_t hash160_simd_1B_prefix(int lanes, const uint32_t *w, uint64_t prefix, uint8_t *const *out);
+uint32_t hash160_simd_2B_prefix(int lanes, const uint32_t *w, uint64_t prefix, uint8_t *const *out);
 
 #endif

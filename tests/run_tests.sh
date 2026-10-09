@@ -46,6 +46,23 @@ echo 91b24bf9f5288532960ac687abb035127b1d28a5 > unc.rmd
 run "Private Key" -m rmd160 -f unc.rmd -r 1:FFFFF -n 0x100000 -t 4 -q -s 0 -L -l uncompress
 check "rmd160 -l uncompress" 1 "$N"
 
+# Single-target fused prefix filter, including a deliberate 64-bit prefix
+# collision: the remaining 12 bytes MUST still be checked by the worker.
+echo 751e76e8199196d454941c45d1b3a323f1433bd6 > comp.rmd
+echo 751e76e8199196d454941c45d1b3a323f1433bd7 > collision.rmd
+for simd in auto avx2 none; do
+	if [ "$simd" = auto ]; then unset KEYHUNT_SIMD; else export KEYHUNT_SIMD=$simd; fi
+	for mode in compress both; do
+		run "Private Key: 1$" -m rmd160 -f comp.rmd -r 1:FFFF -n 0x10000 -t 1 -q -s 0 -L -l $mode
+		check "single target $mode $simd" 1 "$N"
+		run "Private Key" -m rmd160 -f collision.rmd -r 1:FFFF -n 0x10000 -t 1 -q -s 0 -L -l $mode
+		check "prefix collision rejected $mode $simd" 0 "$N"
+	done
+	run "Private Key: 1$" -m rmd160 -f unc.rmd -r 1:FFFF -n 0x10000 -t 1 -q -s 0 -L -l uncompress
+	check "single target uncompress $simd" 1 "$N"
+done
+unset KEYHUNT_SIMD
+
 # Random mode never runs out of range, so it must end by itself once every target
 # is found. Puzzle 19 is listed twice to check that duplicates count once.
 # -n keeps the sequential blocks small so the random starts cover the range quickly.

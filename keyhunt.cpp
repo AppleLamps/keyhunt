@@ -2796,8 +2796,15 @@ void *thread_process(void *vargp)	{
 						uint8_t *hp[16];
 						if(FLAGSEARCH == SEARCH_COMPRESS || FLAGSEARCH == SEARCH_BOTH)	{
 							for(k = 0; k < simd_lanes; k++)	hp[k] = (uint8_t*)hash160_simd_c[k];
-							secp->GetHash160_N(simd_lanes,true,grpN,hp);
-							for(k = 0; k < simd_lanes; k++)	{
+							uint32_t hits;
+							if(small_targets_n == 1)
+								hits = secp->GetHash160_N_Prefix(simd_lanes,true,grpN,small_targets[0],hp);
+							else {
+								secp->GetHash160_N(simd_lanes,true,grpN,hp);
+								hits = (1u << simd_lanes) - 1;
+							}
+							for(; hits; hits &= hits - 1)	{
+								k = __builtin_ctz(hits);
 								if(target_hit(hash160_simd_c[k]))	{
 									keyfound.SetInt32(k);
 									keyfound.Mult(&stride);
@@ -2808,8 +2815,15 @@ void *thread_process(void *vargp)	{
 						}
 						if(FLAGSEARCH == SEARCH_UNCOMPRESS || FLAGSEARCH == SEARCH_BOTH)	{
 							for(k = 0; k < simd_lanes; k++)	hp[k] = (uint8_t*)hash160_simd_u[k];
-							secp->GetHash160_N(simd_lanes,false,grpN,hp);
-							for(k = 0; k < simd_lanes; k++)	{
+							uint32_t hits;
+							if(small_targets_n == 1)
+								hits = secp->GetHash160_N_Prefix(simd_lanes,false,grpN,small_targets[0],hp);
+							else {
+								secp->GetHash160_N(simd_lanes,false,grpN,hp);
+								hits = (1u << simd_lanes) - 1;
+							}
+							for(; hits; hits &= hits - 1)	{
+								k = __builtin_ctz(hits);
 								if(target_hit(hash160_simd_u[k]))	{
 									keyfound.SetInt32(k);
 									keyfound.Mult(&stride);
