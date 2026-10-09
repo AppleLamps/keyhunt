@@ -66,7 +66,7 @@ endif
 C_SRCS   := base58/base58.c rmd160/rmd160.c xxhash/xxhash.c
 # These ".c" files are written as C++ and always have been compiled as such
 CXXC_SRCS := util.c sha3/sha3.c sha3/keccak.c
-CXX_SRCS := oldbloom/bloom.cpp bloom/bloom.cpp \
+CXX_SRCS := ScanCheckpoint.cpp oldbloom/bloom.cpp bloom/bloom.cpp \
             secp256k1/Int.cpp secp256k1/Point.cpp secp256k1/SECP256K1.cpp \
             secp256k1/IntMod.cpp secp256k1/Random.cpp secp256k1/IntGroup.cpp \
             secp256k1/FieldMulSimd.cpp secp256k1/GroupAdd52.cpp \
@@ -183,7 +183,7 @@ $(BUILD)/legacy/base58/base58.o $(BUILD)/legacy/xxhash/xxhash.o: $(BUILD)/legacy
 
 # ---- tests ------------------------------------------------------------------
 
-TEST_BINS := $(BUILD)/test_hash160 $(BUILD)/test_int $(BUILD)/test_fieldmul $(BUILD)/test_groupadd52
+TEST_BINS := $(BUILD)/test_hash160 $(BUILD)/test_int $(BUILD)/test_fieldmul $(BUILD)/test_groupadd52 $(BUILD)/test_checkpoint
 TEST_HASH_OBJS := $(addprefix $(BUILD)/hash/,hash160_simd.o sha256.o ripemd160.o ripemd160_sse.o sha256_sse.o) \
                   $(addprefix $(BUILD)/secp256k1/,Int.o Point.o SECP256K1.o IntMod.o Random.o IntGroup.o FieldMulSimd.o GroupAdd52.o) \
                   $(BUILD)/util.o
@@ -204,6 +204,10 @@ $(BUILD)/test_groupadd52: $(BUILD)/tests/test_groupadd52.o $(TEST_HASH_OBJS)
 	@echo "  LD    $@"
 	$(Q)$(CXX) $(MAIN_CXXFLAGS) -o $@ $^ $(LDLIBS)
 
+$(BUILD)/test_checkpoint: $(BUILD)/tests/test_checkpoint.o $(BUILD)/ScanCheckpoint.o $(TEST_HASH_OBJS)
+	@echo "  LD    $@"
+	$(Q)$(CXX) $(MAIN_CXXFLAGS) -o $@ $^ $(LDLIBS)
+
 # make bench_fieldmul: ns per field multiply, scalar vs each SIMD kernel
 $(BUILD)/bench_fieldmul: $(BUILD)/tests/bench_fieldmul.o $(TEST_HASH_OBJS)
 	@echo "  LD    $@"
@@ -217,6 +221,8 @@ test: keyhunt kangaroo lcgfit lineage walletfit $(TEST_BINS)
 	@$(BUILD)/test_int
 	@$(BUILD)/test_fieldmul
 	@$(BUILD)/test_groupadd52
+	@$(BUILD)/test_checkpoint
+	@if command -v python3 > /dev/null; then python3 tests/test_checkpoint.py ./keyhunt; fi
 	@sh tests/run_tests.sh ./keyhunt
 	@sh tests/test_kangaroo.sh ./kangaroo
 	@./lcgfit s > /dev/null && echo "[ok]   lcgfit self test"

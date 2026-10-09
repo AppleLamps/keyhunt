@@ -10,6 +10,9 @@ email: albertobsd@gmail.com
 #include <math.h>
 #include <time.h>
 #include <vector>
+#include <stdexcept>
+#include <csignal>
+#include "ScanCheckpoint.h"
 #include <inttypes.h>
 #include "base58/libbase58.h"
 #include "rmd160/rmd160.h"
@@ -125,6 +128,10 @@ char *str_baseminikey = NULL;
 char *raw_baseminikey = NULL;
 char *minikeyN = NULL;
 char *bsgs_cache_dir = NULL;
+char *scan_checkpoint_file = NULL;
+ScanCheckpoint *scan_checkpoint = NULL;
+static volatile sig_atomic_t scan_stop_requested = 0;
+static void stop_checkpoint_scan(int) { scan_stop_requested = 1; }
 int minikey_n_limit;
 	
 const char *version = "0.2.230519 Satoshi Quest";
@@ -531,7 +538,7 @@ int main(int argc, char **argv)	{
 	
 	printf("[+] Version %s, developed by AlbertoBSD\n",version);
 
-	while ((c = getopt(argc, argv, "dehF6LMqRSB:b:c:C:E:f:I:k:l:m:N:n:o:p:r:s:t:v:G:8:z:")) != -1) {
+	while ((c = getopt(argc, argv, "dehF6LMqRSB:b:c:C:E:f:I:k:l:m:N:n:o:p:P:r:s:t:v:G:8:z:")) != -1) {
 		switch(c) {
 			case 'h':
 				menu();
@@ -633,6 +640,9 @@ int main(int argc, char **argv)	{
 			case 'f':
 				FLAGFILE = 1;
 				fileName = optarg;
+			break;
+			case 'P':
+				scan_checkpoint_file = optarg;
 			break;
 			case 'I':
 				FLAGSTRIDE = 1;
@@ -2169,6 +2179,36 @@ int main(int argc, char **argv)	{
 		}
 		free(aux);
 	}
+	if(scan_checkpoint_file) {
+		if((FLAGMODE != MODE_ADDRESS && FLAGMODE != MODE_RMD160) || FLAGCRYPTO != CRYPTO_BTC ||
+		   FLAGENDOMORPHISM || !stride.IsOne()) {
+			fprintf(stderr,"[E] -P checkpoints require Bitcoin address/rmd160 mode, stride 1 and no -e\n");
+			return EXIT_FAILURE;
+		}
+		uint8_t target_hash[32], identity_hash[32];
+		if(!sha256_file(fileName,target_hash)) {
+			fprintf(stderr,"[E] Cannot fingerprint checkpoint target file %s\n",fileName);
+			return EXIT_FAILURE;
+		}
+		std::string identity = sha256_hex(target_hash) + ":" + std::to_string(FLAGMODE) +
+		                       ":" + std::to_string(FLAGSEARCH);
+		sha256((uint8_t*)identity.data(),identity.size(),identity_hash);
+		// Cap checkpoint jobs at 16M keys so interruptions replay seconds of
+		// work rather than a full default 4G-key block per worker.
+		uint64_t checkpoint_keys = std::min(N_SEQUENTIAL_MAX, uint64_t(0x1000000));
+		try {
+			scan_checkpoint = new ScanCheckpoint(scan_checkpoint_file,sha256_hex(identity_hash),
+			                                     n_range_start,n_range_end,checkpoint_keys,FLAGRANDOM);
+			printf("[+] Checkpoint: %s\n",scan_checkpoint->Summary().c_str());
+			printf("[+] Checkpoint jobs: %" PRIu64 " keys; completed blocks are skipped on resume\n",checkpoint_keys);
+			fflush(stdout);
+			std::signal(SIGINT,stop_checkpoint_scan);
+			std::signal(SIGTERM,stop_checkpoint_scan);
+		} catch(const std::exception &error) {
+			fprintf(stderr,"[E] %s\n",error.what());
+			return EXIT_FAILURE;
+		}
+	}
 	if(FLAGMODE != MODE_BSGS)	{
 		steps = (uint64_t *) calloc(NTHREADS,sizeof(uint64_t));
 		checkpointer((void *)steps,__FILE__,"calloc","steps" ,__LINE__ -1 );
@@ -2232,6 +2272,13 @@ int main(int argc, char **argv)	{
 	do	{
 		sleep_ms(1000);
 		seconds.AddOne();
+		if(scan_checkpoint && seconds.GetInt64() % 5 == 0) {
+			try { scan_checkpoint->Flush(); }
+			catch(const std::exception &error) {
+				fprintf(stderr,"[E] %s\n",error.what());
+				return EXIT_FAILURE;
+			}
+		}
 		check_flag = 1;
 		for(j = 0; j <NTHREADS && check_flag; j++) {
 			check_flag &= ends[j];
@@ -2341,6 +2388,15 @@ int main(int argc, char **argv)	{
 #else
 		pthread_mutex_lock(&write_keys);
 #endif
+	}
+	if(scan_checkpoint) {
+		try {
+			scan_checkpoint->Flush();
+			printf("[+] Checkpoint: %s\n",scan_checkpoint->Summary().c_str());
+		} catch(const std::exception &error) {
+			fprintf(stderr,"[E] %s\n",error.what());
+			return EXIT_FAILURE;
+		}
 	}
 	printf("\nEnd\n");
 #ifdef _WIN64
@@ -2653,6 +2709,8 @@ void *thread_process(void *vargp)	{
 	char hash160_simd_u[16][20];
 	char hash160_simd_endo[12][16][20];
 	Int key_mpz,keyfound,temp_stride,key_step4,key_step_simd,key_step_endo;
+	Int checkpoint_id;
+	uint64_t block_keys = N_SEQUENTIAL_MAX;
 	tt = (struct tothread *)vargp;
 	thread_number = tt->nt;
 	free(tt);
@@ -2668,7 +2726,15 @@ void *thread_process(void *vargp)	{
 	key_step_endo.Mult(&stride);
 			
 	do {
-		if(FLAGRANDOM){
+		if(scan_checkpoint) {
+			try {
+				if(!scan_checkpoint->Acquire(checkpoint_id,key_mpz,block_keys)) continue_flag = 0;
+			} catch(const std::exception &error) {
+				fprintf(stderr,"[E] %s\n",error.what());
+				exit(EXIT_FAILURE);
+			}
+		}
+		else if(FLAGRANDOM){
 			key_mpz.Rand(&n_range_start,&n_range_end);
 		}
 		else	{
@@ -2785,15 +2851,18 @@ void *thread_process(void *vargp)	{
 					endomorphism_beta2[0].x.ModMulK1(&pts[0].x, &beta2);
 				}
 								
+				// Only the final checkpoint job can have a partial point group.
+				int group_keys = scan_checkpoint ? (int)std::min(uint64_t(CPU_GRP_SIZE),block_keys-count) : CPU_GRP_SIZE;
 				j = 0;
 				if(simd_lanes)	{
 					/*
 						simd_lanes points per iteration with the AVX2 (8) or AVX-512 (16)
 						hash160 kernels. Plain (non endomorphism) BTC case only.
 					*/
-					for(; j < CPU_GRP_SIZE/4; j += simd_lanes/4)	{
+					for(; j*4 < (uint64_t)group_keys; j += simd_lanes/4)	{
 						Point *grpN = &pts[j*4];
 						uint8_t *hp[16];
+						int valid_lanes = std::min(simd_lanes,group_keys-(int)j*4);
 						if(FLAGSEARCH == SEARCH_COMPRESS || FLAGSEARCH == SEARCH_BOTH)	{
 							for(k = 0; k < simd_lanes; k++)	hp[k] = (uint8_t*)hash160_simd_c[k];
 							uint32_t hits;
@@ -2803,6 +2872,7 @@ void *thread_process(void *vargp)	{
 								secp->GetHash160_N(simd_lanes,true,grpN,hp);
 								hits = (1u << simd_lanes) - 1;
 							}
+							hits &= (1u << valid_lanes) - 1;
 							for(; hits; hits &= hits - 1)	{
 								k = __builtin_ctz(hits);
 								if(target_hit(hash160_simd_c[k]))	{
@@ -2822,6 +2892,7 @@ void *thread_process(void *vargp)	{
 								secp->GetHash160_N(simd_lanes,false,grpN,hp);
 								hits = (1u << simd_lanes) - 1;
 							}
+							hits &= (1u << valid_lanes) - 1;
 							for(; hits; hits &= hits - 1)	{
 								k = __builtin_ctz(hits);
 								if(target_hit(hash160_simd_u[k]))	{
@@ -2832,7 +2903,7 @@ void *thread_process(void *vargp)	{
 								}
 							}
 						}
-						count += simd_lanes;
+						count += valid_lanes;
 						key_mpz.Add(&key_step_simd);
 					}
 				}
@@ -2857,7 +2928,7 @@ void *thread_process(void *vargp)	{
 						key_mpz.Add(&key_step_endo);
 					}
 				}
-				for(; j < CPU_GRP_SIZE/4;j++){
+				for(; j*4 < (uint64_t)group_keys;j++){
 					switch(FLAGMODE)	{
 						case MODE_RMD160:
 						case MODE_ADDRESS:
@@ -2935,7 +3006,7 @@ void *thread_process(void *vargp)	{
 						case MODE_ADDRESS:
 							if( FLAGCRYPTO  == CRYPTO_BTC) {
 								
-								for(k = 0; k < 4;k++)	{
+								for(k = 0; k < 4 && (int)j*4+k < group_keys;k++)	{
 									if(FLAGSEARCH == SEARCH_COMPRESS || FLAGSEARCH == SEARCH_BOTH){
 										if(FLAGENDOMORPHISM)	{
 											for(l = 0;l < 6; l++)	{
@@ -3198,7 +3269,7 @@ void *thread_process(void *vargp)	{
 							}
 						break;
 					}
-					count+=4;
+					count += std::min(4,group_keys-(int)j*4);
 					key_mpz.Add(&key_step4);
 				}
 				/*
@@ -3223,9 +3294,17 @@ void *thread_process(void *vargp)	{
 				startP.y.ModSub(&_2Gn.x,&startP.x);
 				startP.y.ModMulK1(&_s);
 				startP.y.ModSub(&_2Gn.y);
-			}while(count < N_SEQUENTIAL_MAX && continue_flag);
+			}while(count < block_keys && continue_flag &&
+			        (!scan_checkpoint || (!scan_stop_requested && !FLAG_ALL_FOUND)));
+			if(scan_checkpoint && count >= block_keys) {
+				try { scan_checkpoint->Complete(checkpoint_id); }
+				catch(const std::exception &error) {
+					fprintf(stderr,"[E] %s\n",error.what());
+					exit(EXIT_FAILURE);
+				}
+			}
 		}
-	} while(continue_flag);
+	} while(continue_flag && (!scan_checkpoint || (!scan_stop_requested && !FLAG_ALL_FOUND)));
 	ends[thread_number] = 1;
 	return NULL;
 }
@@ -5335,6 +5414,7 @@ void menu() {
 	printf("-n number   Check for N sequential numbers before the random chosen, random mode only\n");
 	printf("            Use -n to set the N for the BSGS process. Bigger N more RAM needed\n");
 	printf("-o dir      Directory for BSGS .blm and .tbl cache files (default: current directory)\n");
+	printf("-P file     Save/resume completed scan blocks (Bitcoin address/rmd160, stride 1, no -e)\n");
 	printf("-q          Quiet the thread output\n");
 	printf("-r SR:EN    StarRange:EndRange, the end range can be omitted for search from start range to N-1 ECC value\n");
 	printf("-R          Random search inside the range, this is the default behavior (see -L)\n");

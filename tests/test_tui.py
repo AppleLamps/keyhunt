@@ -128,6 +128,31 @@ class CommandTests(unittest.TestCase):
             loaded, _ = keyhunt_tui.load_config(path)
         self.assertEqual(loaded, config)
 
+    def test_puzzle_71_checkpoint_is_enabled_and_command_includes_it(self):
+        catalog = keyhunt_tui.load_puzzle_catalog()
+        hardware = keyhunt_tui.HardwareProfile("test CPU", 12, 6, 12.0, "AVX2")
+        config = keyhunt_tui.default_config()
+        with tempfile.TemporaryDirectory() as directory:
+            keyhunt_tui.apply_puzzle_preset(config, 71, catalog, hardware, Path(directory))
+            command = keyhunt_tui.build_command(config)
+            self.assertIn("-P", command)
+            self.assertEqual(Path(command[command.index("-P") + 1]).name, "puzzle-071.scan")
+            self.assertFalse(Path(config["checkpoint_file"]).exists())
+        config["checkpoint_file"] = ""
+        self.assertNotIn("-P", keyhunt_tui.build_command(config))
+
+    def test_checkpoint_not_emitted_for_bsgs(self):
+        config = keyhunt_tui.default_config()
+        config.update({"mode": "bsgs", "checkpoint_file": "progress.scan"})
+        self.assertNotIn("-P", keyhunt_tui.build_command(config))
+
+    def test_checkpoint_rejects_stride_and_endomorphism_in_launcher(self):
+        config = keyhunt_tui.default_config()
+        config.update({"checkpoint_file": "progress.scan", "stride": "2", "endomorphism": True})
+        errors = keyhunt_tui.validate_config(config)
+        self.assertIn("Scan checkpoints require stride 1.", errors)
+        self.assertIn("Scan checkpoints require Bitcoin mode without endomorphism.", errors)
+
     def test_bsgs_cache_directory_is_created(self):
         config = keyhunt_tui.default_config()
         with tempfile.TemporaryDirectory() as directory:

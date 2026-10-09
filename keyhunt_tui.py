@@ -166,7 +166,8 @@ def _floor_power_of_two(value: int) -> int:
 
 def puzzle_signature(number: int, hardware: HardwareProfile) -> str:
     memory_tier = _floor_power_of_two(max(1, int(hardware.memory_gib * 64)))
-    return f"puzzle-{number}|threads-{hardware.logical_cpus}|memory-k-{memory_tier}"
+    signature = f"puzzle-{number}|threads-{hardware.logical_cpus}|memory-k-{memory_tier}"
+    return signature + ("|scan-v1" if number == 71 else "")
 
 
 def apply_puzzle_preset(config: Dict[str, object], number: int,
@@ -216,6 +217,7 @@ def apply_puzzle_preset(config: Dict[str, object], number: int,
         "quiet": True,
         "skip_checksum": False,
         "extra_args": "",
+        "checkpoint_file": "",
     })
     if use_bsgs:
         # N must be below the 2^(bits-1) puzzle range. The project's measured
@@ -245,6 +247,7 @@ def apply_puzzle_preset(config: Dict[str, object], number: int,
             "bsgs_factor": "",
             "compact_filter": False,
             "save_tables": False,
+            "checkpoint_file": str(Path(target_name).with_suffix(".scan")) if not solved else "",
         })
         strategy = f"compressed {config['mode']}, {'sequential' if solved else 'random'}"
     state = "solved" if solved else "unsolved"
@@ -279,6 +282,7 @@ def default_config() -> Dict[str, object]:
         "quiet": True,
         "save_tables": False,
         "cache_dir": default_bsgs_cache_dir(),
+        "checkpoint_file": "",
         "compact_filter": False,
         "skip_checksum": False,
         "extra_args": "",
@@ -350,6 +354,9 @@ def visible_fields(config: Dict[str, object]) -> List[Field]:
     if mode == "bsgs":
         fields.append(Field("cache_dir", "BSGS cache directory (-o)",
                             help="Large .blm/.tbl files; defaults to D:\\keyhunt-cache under WSL."))
+    if mode in ("address", "rmd160"):
+        fields.append(Field("checkpoint_file", "Scan checkpoint (-P)",
+                            help="Save/resume completed blocks; blank disables. Same target/range/settings required."))
     fields.extend([
         Field("quiet", "Quiet workers (-q)", "bool", help="Speed reports and hits are still shown."),
         Field("extra_args", "Advanced arguments", help="Optional extra CLI arguments, parsed without a shell."),
@@ -399,6 +406,10 @@ def build_command(config: Dict[str, object], binary: str = "./keyhunt") -> List[
         stride = str(config.get("stride", "")).strip()
         if stride:
             command += ["-I", stride]
+    if mode in ("address", "rmd160"):
+        checkpoint = str(config.get("checkpoint_file", "")).strip()
+        if checkpoint:
+            command += ["-P", checkpoint]
     if mode in ("address", "rmd160", "xpoint", "vanity"):
         bloom = str(config.get("bloom_multiplier", "")).strip()
         if bloom:
@@ -466,6 +477,16 @@ def validate_config(config: Dict[str, object], binary: str = "./keyhunt") -> Lis
             errors.append(f"{label} must be {'zero or greater' if allow_zero else 'greater than zero'}.")
 
     base = str(config.get("minikey_base", "")).strip()
+    if mode in ("address", "rmd160") and str(config.get("checkpoint_file", "")).strip():
+        if (mode == "address" and config.get("crypto") != "btc") or config.get("endomorphism"):
+            errors.append("Scan checkpoints require Bitcoin mode without endomorphism.")
+        stride = str(config.get("stride", "")).strip()
+        if stride:
+            try:
+                if int(stride, 16 if stride.lower().startswith("0x") else 10) != 1:
+                    raise ValueError
+            except ValueError:
+                errors.append("Scan checkpoints require stride 1.")
     if mode == "minikeys" and base and len(base) != 22:
         errors.append("The base minikey must be exactly 22 characters.")
     try:

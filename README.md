@@ -134,6 +134,11 @@ make tui
 
 The TUI includes presets for Bitcoin puzzles 1 through 160, sourced from `puzzle-all.xlsx`. Selecting a puzzle creates its one-target input under `.keyhunt-puzzles/` and fills in a machine-tuned configuration. Puzzles with a known public key use BSGS with `-n`, `-k`, compact-filter, caching, and thread settings sized for the available CPU and RAM. Address-only puzzles use the compressed hash160 path without endomorphism, because endomorphism does not help a bounded puzzle range. Select `manual` to configure a non-puzzle run.
 
+Unsolved address-only presets, including puzzle 71, enable scan checkpoints at
+`.keyhunt-puzzles/puzzle-071.scan` (with the selected puzzle number). Starting
+that preset again resumes saved progress automatically. Edit **Scan checkpoint
+(-P)** to select another file or clear it to disable checkpointing.
+
 It also shows the exact command before it runs, remembers settings in `.keyhunt-tui.json`, and displays live speed reports and hits. A found private key is pinned at the top as the complete zero-padded 64-digit hexadecimal value, and long output lines wrap instead of being clipped. Use the arrow keys to navigate, Enter to type a puzzle number or edit a value, Left/Right or Space to step through selections, `R` to run, and `q` to stop a running search. Press `B` inside the TUI to rebuild Keyhunt.
 
 On WSL, BSGS presets save their large `.blm` and `.tbl` cache files under `/mnt/d/keyhunt-cache` (`D:\keyhunt-cache`) by default. Edit **BSGS cache directory** in the TUI to use another disk or folder.
@@ -163,6 +168,7 @@ It uses only the Python standard library. For scripting or troubleshooting, `pyt
 | `-B mode` | BSGS order: `sequential`, `backward`, `both`, `random` (default), `dance` |
 | `-k factor` | BSGS: multiplies the table size, more RAM for more speed |
 | `-S` | save the generated bloom filters and tables to disk and load them next time |
+| `-P file` | save/resume scan progress for Bitcoin address/rmd160 mode, stride 1, without `-e`; works with `-L` and `-R` |
 | `-6` | skip the SHA-256 checksum when loading saved files |
 | `-z value` | bloom filter size multiplier, 1 or more (address, rmd160, xpoint, vanity) |
 | `-v prefix` | vanity prefix, can be repeated (vanity mode) |
@@ -175,6 +181,40 @@ It uses only the Python standard library. For scripting or troubleshooting, `pyt
 Input files may contain one target per line followed by a space and any comment, which is ignored. In `address` mode the lines are Bitcoin addresses or, with `-c eth`, Ethereum addresses.
 
 > **Tip.** When stdout is a pipe, output is block buffered, so a hit may not show up until later. The result is always written to `KEYFOUNDKEYFOUND.txt` right away.
+
+### Saving and resuming a scan
+
+Add `-P` with a checkpoint filename to save completed blocks. For puzzle 71,
+after selecting its launcher preset to create the target file:
+
+```sh
+KEYHUNT_FIELD_SIMD=none ./keyhunt -m rmd160 -f .keyhunt-puzzles/puzzle-071.rmd \
+  -b 71 -l compress -t 12 -q -s 10 -R -P .keyhunt-puzzles/puzzle-071.scan
+```
+
+Run the same command again to resume. Thread counts and SIMD settings can
+change. The target file contents, range, key form, search mode and order, and
+effective block size must match; incompatible or corrupt checkpoints are
+rejected before any work is skipped. The checkpoint's parent directory must
+exist. One scanner can use a given checkpoint at a time.
+
+With `-P`, sequential mode walks disjoint blocks from the start. Random mode
+uses a saved randomized starting block and a step that visits every block once;
+it skips saved completed blocks and finishes when the range is exhausted.
+For explicit `-r start:end` ranges, the end is exclusive. The checkpoint stores
+the traversal position and unfinished blocks, rather than every individual key.
+
+Snapshots are flushed to disk every five seconds and at a normal exit or
+Ctrl+C/SIGTERM stop. Worker threads keep scanning during disk writes. Jobs are
+capped at `0x1000000` (16,777,216) keys, or the smaller `-n` value, so interrupted
+jobs do not require replaying a full default 4G-key block. After a hard kill or
+crash, unfinished blocks and any progress since the last saved snapshot are
+rescanned to avoid gaps. A partially written `.tmp` file never replaces the last
+valid checkpoint. Scans made before creating a checkpoint cannot be recovered.
+
+To start a separate scan, choose another checkpoint file. To deliberately
+restart from zero, stop the scanner and remove its `.scan` file. `-S` continues
+to control target/table caches separately.
 
 ## Modes
 
@@ -485,6 +525,7 @@ In BSGS mode the speed is the size of the range covered per second, not the numb
 | `VANITYKEYFOUND.txt` | vanity matches |
 | `*.blm`, `*.tbl` | BSGS bloom filters and baby step table written with `-S` |
 | `data_<id>.dat` | cached bloom filter and table of an input file, written with `-S` in the other modes |
+| the file passed to `-P` | saved scan position and unfinished blocks; `.lock` and `.tmp` sidecars coordinate access and atomic replacement |
 
 All are written to the current directory.
 
